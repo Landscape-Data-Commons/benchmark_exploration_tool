@@ -128,26 +128,43 @@ server <- function(input, output, session) {
                    # Make sure it's uppercase
                    ecosite_id <- toupper(input$ecosite_id)
                    
-                   # Build the query
-                   query <- paste0("http://api.landscapedatacommons.org/api/",
-                                   "geoindicators?",
-                                   "EcologicalSiteId=",
-                                   ecosite_id)
-
-                   # Getting the data via curl
-                   # connection <- curl::curl(query)
-                   # results_raw <- readLines(connection)
-                   # results <- jsonlite::fromJSON(results_raw)
-                   print("Attempting to query EDIT")
-                   # Full query results for geoindicators based on ecosite
-                   full_results <- httr::GET(query,
-                                             config = httr::timeout(30))
-                   # Grab only the data portion
-                   results_raw <- full_results[["content"]]
-                   # Convert from raw to character
-                   results_character <- rawToChar(results_raw)
-                   # Convert from character to data frame
-                   results <- jsonlite::fromJSON(results_character)
+                   # Handle multiple requested ecosites at once!
+                   ecosite_id_vector <- stringr::str_split(string = ecosite_id,
+                                                           pattern = ",",
+                                                           simplify = TRUE)
+                   ecosite_id_vector <- trimws(ecosite_id_vector)
+                   
+                   query_results_list <- lapply(X = ecosite_id_vector,
+                                                FUN = function(X){
+                                                  # Build the query
+                                                  query <- paste0("http://api.landscapedatacommons.org/api/",
+                                                                  "geoindicators?",
+                                                                  "EcologicalSiteId=",
+                                                                  X)
+                                                  
+                                                  # Getting the data via curl
+                                                  # connection <- curl::curl(query)
+                                                  # results_raw <- readLines(connection)
+                                                  # results <- jsonlite::fromJSON(results_raw)
+                                                  print("Attempting to query EDIT")
+                                                  # Full query results for geoindicators based on ecosite
+                                                  full_results <- httr::GET(query,
+                                                                            config = httr::timeout(30))
+                                                  # Grab only the data portion
+                                                  results_raw <- full_results[["content"]]
+                                                  # Convert from raw to character
+                                                  results_character <- rawToChar(results_raw)
+                                                  # Convert from character to data frame
+                                                  results <- jsonlite::fromJSON(results_character)
+                                                  results
+                                                })
+                   
+                   results <- do.call(rbind,
+                                      query_results_list)
+                   
+                   # So we can tell the user later which actually got queried
+                   workspace$queried_ecosites <- unique(results$EcologicalSiteId)
+                   workspace$missing_ecosites <- ecosite_id_vector[!(ecosite_id_vector %in% workspace$queried_ecosites)]
                    
                    # Only keep going if there are results!!!!
                    if (length(results) > 0) {
@@ -177,7 +194,9 @@ server <- function(input, output, session) {
                      # Put it in the workspace list
                      workspace$raw_data <- data
                    } else {
-                     output$ecosite_error <- renderText(paste(ecosite_id, "is not a valid ecological site ID recognized by EDIT"))
+                     output$ecosite_error <- renderText(paste("The following are not valid ecological site IDs recognized by EDIT:",
+                                                              paste(workspace$missing_ecosites,
+                                                                    collapse = ", ")))
                    }
                  }
                })
