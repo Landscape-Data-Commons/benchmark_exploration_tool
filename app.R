@@ -379,6 +379,8 @@ server <- function(input, output, session) {
                                                   results_var_names <- names(results)
                                                   indicator_var_indices <- grep(x = results_var_names,
                                                                                 pattern = "^AH_")
+                                                  # So this assumes that if the any single indicator value for an observation is NA,
+                                                  # then ALL indicator values for that observation will be NA
                                                   test_indicator_var <- results_var_names[indicator_var_indices[1]]
                                                   
                                                   indices_with_data <- !is.na(results[[test_indicator_var]])
