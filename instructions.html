@@ -12,7 +12,7 @@
 
 
 
-<title>instructions.utf8</title>
+<title>instructions.knit</title>
 
 <script src="data:application/javascript;base64,Ly8gUGFuZG9jIDIuOSBhZGRzIGF0dHJpYnV0ZXMgb24gYm90aCBoZWFkZXIgYW5kIGRpdi4gV2UgcmVtb3ZlIHRoZSBmb3JtZXIgKHRvCi8vIGJlIGNvbXBhdGlibGUgd2l0aCB0aGUgYmVoYXZpb3Igb2YgUGFuZG9jIDwgMi44KS4KZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsIGZ1bmN0aW9uKGUpIHsKICB2YXIgaHMgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCJkaXYuc2VjdGlvbltjbGFzcyo9J2xldmVsJ10gPiA6Zmlyc3QtY2hpbGQiKTsKICB2YXIgaSwgaCwgYTsKICBmb3IgKGkgPSAwOyBpIDwgaHMubGVuZ3RoOyBpKyspIHsKICAgIGggPSBoc1tpXTsKICAgIGlmICghL15oWzEtNl0kL2kudGVzdChoLnRhZ05hbWUpKSBjb250aW51ZTsgIC8vIGl0IHNob3VsZCBiZSBhIGhlYWRlciBoMS1oNgogICAgYSA9IGguYXR0cmlidXRlczsKICAgIHdoaWxlIChhLmxlbmd0aCA+IDApIGgucmVtb3ZlQXR0cmlidXRlKGFbMF0ubmFtZSk7CiAgfQp9KTsK"></script>
 
@@ -47,23 +47,28 @@
 
 <div id="upload-your-data-or-query-the-landscape-data-commons" class="section level3">
 <h3>1) Upload your data or query the Landscape Data Commons</h3>
-<p>You can either query data from the Landscape Data Commons with an ecological site ID (search for ecological sites on <a href="https://edit.jornada.nmsu.edu">EDIT</a>) <em>or</em> upload a .CSV (comma-separated values) file containing your data in a tidy format, i.e., every row is an observation/plot and every column contains a different indicator value. This is the default format for the Terrestrial AIM Database (TerrADat) which can by accessed by Department of Interior employees <a href="https://aim.landscapetoolbox.org/aim-data-portal">here</a> and everyone else <a href="https://landscape.blm.gov/geoportal/catalog/main/home.page">here</a>.</p>
+<p>You can either query data from the Landscape Data Commons with an ecological site ID (search for ecological sites on <a href="https://edit.jornada.nmsu.edu">EDIT</a>) <em>or</em> upload a .CSV (comma-separated values) file containing any data in a tidy format, i.e., every row is an observation/plot and every column contains the values for a different numeric indicator or measure. This is the default format for the Terrestrial AIM Database (TerrADat) which can by accessed by Department of Interior employees <a href="https://aim.landscapetoolbox.org/aim-data-portal">here</a> and everyone else <a href="https://landscape.blm.gov/geoportal/catalog/main/home.page">here</a>.</p>
+</div>
+<div id="identify-non-data-variables" class="section level3">
+<h3>2) Identify non-data variables</h3>
+<p>In the dropdown, select all the variables that contain identifying information rather than data that might be evaluated. This includes any unique identifying variables (e.g., plot keys, plot names) and other metadata (e.g., data collector name, coordinates, dates, etc.). These will be included in the output you can download once you’ve plotted your data and will be excluded from the list of potential data variables to select from.</p>
 </div>
 <div id="select-the-variable-to-plot" class="section level3">
-<h3>2) Select the variable to plot</h3>
+<h3>3) Select the variable to plot</h3>
 <p>In the dropdown, select which variable or indicator you want to plot. The available options will be all the column names that contained data that could be numeric. Be aware, this may include nonsense options like the unique identifying field, e.g., “ObjectID”.</p>
 </div>
 <div id="decide-your-x-axis-label" class="section level3">
-<h3>3) Decide your x-axis label</h3>
+<h3>4) Decide your x-axis label</h3>
 <p>By default, the x-axis label will be the same as the variable name. It may make sense to change the label to be clearer or more human-friendly, e.g. changing “Foliar.Cover.Pct” to “Foliar cover (%)”.</p>
 </div>
 <div id="decide-your-quantile-break-percentages" class="section level3">
-<h3>4) Decide your quantile break percentages</h3>
+<h3>5) Decide your quantile break percentages</h3>
 <p>The histogram will be broken into quantiles according to these percentages, visualized as a histogram with color and vertical lines representing the breakpoints. As an example, entering “33, 67” will result in showing the value for the variable below which 33% percent of observations fall and the value of the variable below which 67% of the observations fall. The percentages entered must be numbers between 0 and 100 separated by commas. If your entry is invalid, the figure will default to showing the 50% break.</p>
 </div>
-<div id="decide-your-benchmark-expression" class="section level3">
-<h3>5) Decide your benchmark expression</h3>
-<p>A benchmark is an inequality against which all the values will be compared, e.g., &gt;= 25. The figure will show the distribution of values as a histogram with the breaking line for the benchmark cutoff and color code the histogram according to whether the observations are meeting the benchmark or not.</p>
+<div id="define-your-benchmark-category-ranges" class="section level3">
+<h3>6) Define your benchmark category ranges</h3>
+<p>A benchmark is an inequality against which all the values will be compared. The figure will show the distribution of values as a histogram with color coded according to which benchmark categories the observations qualify for.</p>
+<p>Each benchmark category requires a lower limit, the relationship to the lower limit, an upper limit, and a relationship to that upper limit. For example, if the category “Meeting” management goals would be true if the percentage of bare soil is below 25%, then the lower limit and relationship would be 0% &lt;= x and the upper limit and relationship would be x &lt; 25%; the corresponding “Not Meeting” range would be 25% &lt;= x and x &lt;= 100. A benchmark category can have multiple ranges entered on separate rows. Any data that do not qualify for any of the defined benchmark categories will be treated as belonging to the category “Undefined”. The categories are evaluated in descending order, so it is possible to have overlapping category ranges, but the last category that a data point qualified for is the one that it will be assigned to.</p>
 </div>
 
 

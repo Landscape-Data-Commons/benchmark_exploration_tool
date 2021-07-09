@@ -9,14 +9,19 @@ output:
 ### 1) Upload your data or query the Landscape Data Commons
 You can either query data from the Landscape Data Commons with an ecological site ID (search for ecological sites on [EDIT](https://edit.jornada.nmsu.edu)) *or* upload a .CSV (comma-separated values) file containing any data in a tidy format, i.e., every row is an observation/plot and every column contains the values for a different numeric indicator or measure. This is the default format for the Terrestrial AIM Database (TerrADat) which can by accessed by Department of Interior employees [here](https://aim.landscapetoolbox.org/aim-data-portal) and everyone else [here](https://landscape.blm.gov/geoportal/catalog/main/home.page).
 
-### 2) Select the variable to plot
+### 2) Identify non-data variables
+In the dropdown, select all the variables that contain identifying information rather than data that might be evaluated. This includes any unique identifying variables (e.g., plot keys, plot names) and other metadata (e.g., data collector name, coordinates, dates, etc.). These will be included in the output you can download once you've plotted your data and will be excluded from the list of potential data variables to select from.
+
+### 3) Select the variable to plot
 In the dropdown, select which variable or indicator you want to plot. The available options will be all the column names that contained data that could be numeric. Be aware, this may include nonsense options like the unique identifying field, e.g., "ObjectID".
 
-### 3) Decide your x-axis label
+### 4) Decide your x-axis label
 By default, the x-axis label will be the same as the variable name. It may make sense to change the label to be clearer or more human-friendly, e.g. changing "Foliar.Cover.Pct" to "Foliar cover (%)".
 
-### 4) Decide your quantile break percentages
+### 5) Decide your quantile break percentages
 The histogram will be broken into quantiles according to these percentages, visualized as a histogram with color and vertical lines representing the breakpoints. As an example, entering "33, 67" will result in showing the value for the variable below which 33% percent of observations fall and the value of the variable below which 67% of the observations fall. The percentages entered must be numbers between 0 and 100 separated by commas. If your entry is invalid, the figure will default to showing the 50% break.
 
-### 5) Decide your benchmark expression
-A benchmark is an inequality against which all the values will be compared, e.g., >= 25. The figure will show the distribution of values as a histogram with the breaking line for the benchmark cutoff and color code the histogram according to whether the observations are meeting the benchmark or not.
+### 6) Define your benchmark category ranges
+A benchmark is an inequality against which all the values will be compared. The figure will show the distribution of values as a histogram with color coded according to which benchmark categories the observations qualify for.
+
+Each benchmark category requires a lower limit, the relationship to the lower limit, an upper limit, and a relationship to that upper limit. For example, if the category "Meeting" management goals would be true if the percentage of bare soil is below 25%, then the lower limit and relationship would be 0% <= x and the upper limit and relationship would be x < 25%; the corresponding "Not Meeting" range would be 25% <= x and x <= 100. A benchmark category can have multiple ranges entered on separate rows. Any data that do not qualify for any of the defined benchmark categories will be treated as belonging to the category "Undefined". The categories are evaluated in descending order, so it is possible to have overlapping category ranges, but the last category that a data point qualified for is the one that it will be assigned to.
