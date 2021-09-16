@@ -451,14 +451,16 @@ server <- function(input, output, session) {
                                            })
                  
                  # Update the dropdown options to include those variables
-                 updateSelectInput(inputId = "id_variables",
+                 updateSelectInput(session = session,
+                                   inputId = "id_variables",
                                    choices = c("", variable_names))
-                 updateSelectInput(inputId = "variable",
+                 updateSelectInput(session = session,
+                                   inputId = "variable",
                                    choices = c("", variable_names[viable_variables]))
                  
                  output$data_table <- renderTable(workspace$raw_data)
                  
-                 updateTabsetPanel(session,
+                 updateTabsetPanel(session = session,
                                    inputId = "maintabs",
                                    selected = "Data")
                })
@@ -489,7 +491,8 @@ server <- function(input, output, session) {
                  not_id_variable <- !(variable_names %in% input$id_variables)
                  
                  # Update!
-                 updateSelectInput(inputId = "variable",
+                 updateSelectInput(session = session,
+                                   inputId = "variable",
                                    choices = c("", variable_names[viable_variables & not_id_variable]))
                })
   
