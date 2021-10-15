@@ -73,7 +73,7 @@ ui <- fluidPage(
                 label = "Ecological Site ID",
                 value = "",
                 placeholder = "R042XB012NM"),
-      textOutput(outputId = "ecosite_error"),
+      # textOutput(outputId = "ecosite_error"),
       actionButton(inputId = "fetch_data",
                    label = "Fetch data from the Landscape Data Commons"),
       hr(),
@@ -378,7 +378,12 @@ server <- function(input, output, session) {
   #### When someone fetches data from the Landscape Data Commons, do this ####
   observeEvent(eventExpr = input$fetch_data,
                handlerExpr = {
-                 output$ecosite_error <- renderText("")
+                 showNotification(ui = "Downloading data from the LDC. Please wait.",
+                                  duration = NULL,
+                                  closeButton = FALSE,
+                                  id = "downloading",
+                                  type = "message")
+                 # output$ecosite_error <- renderText("")
                  # Only do anything if there's an ecosite ID
                  if (input$ecosite_id != "") {
                    # Make sure it's uppercase
