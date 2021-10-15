@@ -436,7 +436,7 @@ server <- function(input, output, session) {
                                                     
                                                     results[indices_with_data, ]
                                                   } else {
-                                                    results
+                                                    NULL
                                                   }
                                                   
                                                 })
