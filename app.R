@@ -573,6 +573,7 @@ server <- function(input, output, session) {
                  
                  # Convert to numeric
                  quantiles_vector <- as.numeric(quantiles_vector)
+                 quantiles_vector <- unique(quantiles_vector)
                  
                  # IF ANY AREN'T NUMERIC, WE HAVE A PROBLEM
                  if (any(is.na(quantiles_vector))) {
