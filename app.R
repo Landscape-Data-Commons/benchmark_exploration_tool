@@ -443,8 +443,24 @@ server <- function(input, output, session) {
                                       query_results_list)
                    
                    # So we can tell the user later which actually got queried
-                   workspace$queried_ecosites <- unique(results$EcologicalSiteId)
-                   workspace$missing_ecosites <- ecosite_id_vector[!(ecosite_id_vector %in% workspace$queried_ecosites)]
+                   if (is.null(results)) {
+                     workspace$missing_ecosites <- ecosite_id_vector
+                   } else {
+                     workspace$queried_ecosites <- unique(results$EcologicalSiteId)
+                     workspace$missing_ecosites <- ecosite_id_vector[!(ecosite_id_vector %in% workspace$queried_ecosites)]
+                   }
+                   
+                   if (length(workspace$missing_ecosites) > 0) {
+                     ecosite_error <- paste0("The following ecological site IDs are not associated with data in the LDC: ",
+                                             paste(workspace$missing_ecosites,
+                                                   collapse = ", "))
+                     showNotification(ui = ecosite_error,
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      type = "warning",
+                                      id = "ecosite_error")
+                   }
+                   
                    
                    # Only keep going if there are results!!!!
                    if (length(results) > 0) {
