@@ -499,31 +499,33 @@ server <- function(input, output, session) {
   #### When a CSV is read in, do this ####
   observeEvent(eventExpr = workspace$raw_data,
                handlerExpr = {
-                 # Get the variable names in the CSV
-                 variable_names <- names(workspace$raw_data)
-                 
-                 # Look at each column and determine if it can be coerced into numeric
-                 viable_variables <- apply(X = workspace$raw_data,
-                                           MARGIN = 2,
-                                           FUN = function(X){
-                                             vector <- X
-                                             numeric_vector <- as.numeric(vector)
-                                             any(!is.na(numeric_vector))
-                                           })
-                 
-                 # Update the dropdown options to include those variables
-                 updateSelectInput(session = session,
-                                   inputId = "id_variables",
-                                   choices = c("", variable_names))
-                 updateSelectInput(session = session,
-                                   inputId = "variable",
-                                   choices = c("", variable_names[viable_variables]))
-                 
-                 output$data_table <- renderTable(workspace$raw_data)
-                 
-                 updateTabsetPanel(session = session,
-                                   inputId = "maintabs",
-                                   selected = "Data")
+                 if (!is.null(workspace$raw_data)) {
+                   # Get the variable names in the CSV
+                   variable_names <- names(workspace$raw_data)
+                   
+                   # Look at each column and determine if it can be coerced into numeric
+                   viable_variables <- apply(X = workspace$raw_data,
+                                             MARGIN = 2,
+                                             FUN = function(X){
+                                               vector <- X
+                                               numeric_vector <- as.numeric(vector)
+                                               any(!is.na(numeric_vector))
+                                             })
+                   
+                   # Update the dropdown options to include those variables
+                   updateSelectInput(session = session,
+                                     inputId = "id_variables",
+                                     choices = c("", variable_names))
+                   updateSelectInput(session = session,
+                                     inputId = "variable",
+                                     choices = c("", variable_names[viable_variables]))
+                   
+                   output$data_table <- renderTable(workspace$raw_data)
+                   
+                   updateTabsetPanel(session = session,
+                                     inputId = "maintabs",
+                                     selected = "Data")
+                 }
                })
   
   #### When the indicator is updated, do this ####
