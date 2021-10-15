@@ -855,6 +855,7 @@ server <- function(input, output, session) {
                    }
                    setwd(workspace$original_directory)
                  }
+                 removeNotification(id = "plotting")
                })
   
   ##### Download handler for the .zip file created with plots ####
