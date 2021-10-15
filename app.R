@@ -16,6 +16,47 @@ library(stringr)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
+  tags$head(
+    tags$style(
+      HTML(
+        ".shiny-notification {
+          position:fixed;
+          top: calc(30%);
+          left: calc(5%);
+          width: calc(25%);
+          opacity: 1;
+          font-weight: bold;
+          box-shadow: 0 0 0 rgba(181,181,181, 0.4);
+          animation: pulse 2s infinite;
+        }
+        @-webkit-keyframes pulse {
+          0% {
+            -webkit-box-shadow: 0 0 0 0 rgba(181,181,181, 0.4);
+          }
+          70% {
+            -webkit-box-shadow: 0 0 0 10px rgba(181,181,181, 0);
+          }
+          100% {
+            -webkit-box-shadow: 0 0 0 0 rgba(181,181,181, 0);
+          }
+        }
+        @keyframes pulse {
+          0% {
+            -moz-box-shadow: 0 0 0 0 rgba(181,181,181, 0.4);
+            box-shadow: 0 0 0 0 rgba(181,181,181, 0.4);
+          }
+          70% {
+            -moz-box-shadow: 0 0 0 10px rgba(181,181,181, 0);
+            box-shadow: 0 0 0 10px rgba(181,181,181, 0);
+          }
+          100% {
+            -moz-box-shadow: 0 0 0 0 rgba(181,181,181, 0);
+            box-shadow: 0 0 0 0 rgba(181,181,181, 0);
+          }
+        }"
+      )
+    )
+  ),
   
   # Application title
   titlePanel("Plotting Indicator Values and Benchmarks"),
@@ -32,7 +73,7 @@ ui <- fluidPage(
                 label = "Ecological Site ID",
                 value = "",
                 placeholder = "R042XB012NM"),
-      textOutput(outputId = "ecosite_error"),
+      # textOutput(outputId = "ecosite_error"),
       actionButton(inputId = "fetch_data",
                    label = "Fetch data from the Landscape Data Commons"),
       hr(),
@@ -337,7 +378,12 @@ server <- function(input, output, session) {
   #### When someone fetches data from the Landscape Data Commons, do this ####
   observeEvent(eventExpr = input$fetch_data,
                handlerExpr = {
-                 output$ecosite_error <- renderText("")
+                 showNotification(ui = "Downloading data from the LDC. Please wait.",
+                                  duration = NULL,
+                                  closeButton = FALSE,
+                                  id = "downloading",
+                                  type = "message")
+                 # output$ecosite_error <- renderText("")
                  # Only do anything if there's an ecosite ID
                  if (input$ecosite_id != "") {
                    # Make sure it's uppercase
@@ -361,7 +407,8 @@ server <- function(input, output, session) {
                                                   # connection <- curl::curl(query)
                                                   # results_raw <- readLines(connection)
                                                   # results <- jsonlite::fromJSON(results_raw)
-                                                  print("Attempting to query EDIT")
+                                                  message("Attempting to query EDIT")
+                                                  message(query)
                                                   # Full query results for geoindicators based on ecosite
                                                   full_results <- httr::GET(query,
                                                                             config = httr::timeout(30))
@@ -371,6 +418,7 @@ server <- function(input, output, session) {
                                                   results_character <- rawToChar(results_raw)
                                                   # Convert from character to data frame
                                                   results <- jsonlite::fromJSON(results_character)
+                                                  message("Results converted from json to character")
                                                   
                                                   # THIS IS IMPORTANT!
                                                   # Remove rows without data, which apparently happens
@@ -388,17 +436,34 @@ server <- function(input, output, session) {
                                                     
                                                     results[indices_with_data, ]
                                                   } else {
-                                                    results
+                                                    NULL
                                                   }
                                                   
                                                 })
                    
                    results <- do.call(rbind,
                                       query_results_list)
-                   
+                   message("results currently are:")
+                   message(results)
                    # So we can tell the user later which actually got queried
-                   workspace$queried_ecosites <- unique(results$EcologicalSiteId)
-                   workspace$missing_ecosites <- ecosite_id_vector[!(ecosite_id_vector %in% workspace$queried_ecosites)]
+                   if (is.null(results)) {
+                     workspace$missing_ecosites <- ecosite_id_vector
+                   } else {
+                     workspace$queried_ecosites <- unique(results$EcologicalSiteId)
+                     workspace$missing_ecosites <- ecosite_id_vector[!(ecosite_id_vector %in% workspace$queried_ecosites)]
+                   }
+                   
+                   if (length(workspace$missing_ecosites) > 0) {
+                     ecosite_error <- paste0("The following ecological site IDs are not associated with data in the LDC: ",
+                                             paste(workspace$missing_ecosites,
+                                                   collapse = ", "))
+                     showNotification(ui = ecosite_error,
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      type = "warning",
+                                      id = "ecosite_error")
+                   }
+                   
                    
                    # Only keep going if there are results!!!!
                    if (length(results) > 0) {
@@ -428,41 +493,42 @@ server <- function(input, output, session) {
                      # Put it in the workspace list
                      workspace$raw_data <- data
                    } else {
-                     output$ecosite_error <- renderText(paste("The following are not valid ecological site IDs recognized by EDIT:",
-                                                              paste(workspace$missing_ecosites,
-                                                                    collapse = ", ")))
+                     workspace$raw_data <- NULL
                    }
                  }
+                 removeNotification(id = "downloading")
                })
   
   #### When a CSV is read in, do this ####
   observeEvent(eventExpr = workspace$raw_data,
                handlerExpr = {
-                 # Get the variable names in the CSV
-                 variable_names <- names(workspace$raw_data)
-                 
-                 # Look at each column and determine if it can be coerced into numeric
-                 viable_variables <- apply(X = workspace$raw_data,
-                                           MARGIN = 2,
-                                           FUN = function(X){
-                                             vector <- X
-                                             numeric_vector <- as.numeric(vector)
-                                             any(!is.na(numeric_vector))
-                                           })
-                 
-                 # Update the dropdown options to include those variables
-                 updateSelectInput(session = session,
-                                   inputId = "id_variables",
-                                   choices = c("", variable_names))
-                 updateSelectInput(session = session,
-                                   inputId = "variable",
-                                   choices = c("", variable_names[viable_variables]))
-                 
-                 output$data_table <- renderTable(workspace$raw_data)
-                 
-                 updateTabsetPanel(session = session,
-                                   inputId = "maintabs",
-                                   selected = "Data")
+                 if (!is.null(workspace$raw_data)) {
+                   # Get the variable names in the CSV
+                   variable_names <- names(workspace$raw_data)
+                   
+                   # Look at each column and determine if it can be coerced into numeric
+                   viable_variables <- apply(X = workspace$raw_data,
+                                             MARGIN = 2,
+                                             FUN = function(X){
+                                               vector <- X
+                                               numeric_vector <- as.numeric(vector)
+                                               any(!is.na(numeric_vector))
+                                             })
+                   
+                   # Update the dropdown options to include those variables
+                   updateSelectInput(session = session,
+                                     inputId = "id_variables",
+                                     choices = c("", variable_names))
+                   updateSelectInput(session = session,
+                                     inputId = "variable",
+                                     choices = c("", variable_names[viable_variables]))
+                   
+                   output$data_table <- renderTable(workspace$raw_data)
+                   
+                   updateTabsetPanel(session = session,
+                                     inputId = "maintabs",
+                                     selected = "Data")
+                 }
                })
   
   #### When the indicator is updated, do this ####
@@ -507,10 +573,15 @@ server <- function(input, output, session) {
                  
                  # Convert to numeric
                  quantiles_vector <- as.numeric(quantiles_vector)
+                 quantiles_vector <- unique(quantiles_vector)
                  
                  # IF ANY AREN'T NUMERIC, WE HAVE A PROBLEM
                  if (any(is.na(quantiles_vector))) {
-                   # INSERT ERROR MESSAGE HERE
+                   showNotification(ui = "All quantile values must be numeric values between 0 and 100, separated by commas. Unless corrected, the default of 50% will be used.",
+                                    duration = NULL,
+                                    closeButton = TRUE,
+                                    type = "error",
+                                    id = "quantile_error_nonnumeric")
                    # Default to just 50%
                    workspace[["quantiles"]] <- c(0.5)
                  } else {
@@ -521,7 +592,11 @@ server <- function(input, output, session) {
                    if (all(quantiles_vector >= 0) & all(quantiles_vector <= 1)) {
                      workspace[["quantiles"]] <- quantiles_vector
                    } else {
-                     # INSERT ERROR MESSAGE HERE
+                     showNotification(ui = "All quantile values must be between 0 and 100, separated by commas. Unless corrected, the default of 50% will be used.",
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      type = "error",
+                                      id = "quantile_error_valuerange")
                      # Default to just 50%
                      workspace[["quantiles"]] <- c(0.5)
                    }
@@ -532,6 +607,10 @@ server <- function(input, output, session) {
   #### When the plot button is hit, do this ####
   observeEvent(eventExpr = input$plot_button,
                handlerExpr = {
+                 showNotification(ui = "Drawing plots. Please wait.",
+                                  duration = NULL,
+                                  closeButton = FALSE,
+                                  id = "plotting")
                  # Get a copy of the data to manipulate for plotting
                  plotting_data <- workspace$raw_data
                  
@@ -702,7 +781,7 @@ server <- function(input, output, session) {
                    
                    percent_by_category <- round(100 * benchmark_results_summary / sum(benchmark_results_summary),
                                                 digits = 1)
-
+                   
                    # Plot the histogram with benchmark info!
                    workspace$benchmark_plot <- ggplot(data = plotting_data) +
                      geom_histogram(aes(y = current_variable,
@@ -790,6 +869,7 @@ server <- function(input, output, session) {
                    }
                    setwd(workspace$original_directory)
                  }
+                 removeNotification(id = "plotting")
                })
   
   ##### Download handler for the .zip file created with plots ####
