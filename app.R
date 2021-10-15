@@ -577,7 +577,11 @@ server <- function(input, output, session) {
                  
                  # IF ANY AREN'T NUMERIC, WE HAVE A PROBLEM
                  if (any(is.na(quantiles_vector))) {
-                   # INSERT ERROR MESSAGE HERE
+                   showNotification(ui = "All quantile values must be numeric values between 0 and 100, separated by commas. Unless corrected, the default of 50% will be used.",
+                                    duration = NULL,
+                                    closeButton = TRUE,
+                                    type = "error",
+                                    id = "quantile_error_nonnumeric")
                    # Default to just 50%
                    workspace[["quantiles"]] <- c(0.5)
                  } else {
@@ -588,7 +592,11 @@ server <- function(input, output, session) {
                    if (all(quantiles_vector >= 0) & all(quantiles_vector <= 1)) {
                      workspace[["quantiles"]] <- quantiles_vector
                    } else {
-                     # INSERT ERROR MESSAGE HERE
+                     showNotification(ui = "All quantile values must be between 0 and 100, separated by commas. Unless corrected, the default of 50% will be used.",
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      type = "error",
+                                      id = "quantile_error_valuerange")
                      # Default to just 50%
                      workspace[["quantiles"]] <- c(0.5)
                    }
