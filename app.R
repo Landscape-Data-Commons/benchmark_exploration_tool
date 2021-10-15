@@ -493,6 +493,7 @@ server <- function(input, output, session) {
                      workspace$raw_data <- NULL
                    }
                  }
+                 removeNotification(id = "downloading")
                })
   
   #### When a CSV is read in, do this ####
