@@ -407,7 +407,8 @@ server <- function(input, output, session) {
                                                   # connection <- curl::curl(query)
                                                   # results_raw <- readLines(connection)
                                                   # results <- jsonlite::fromJSON(results_raw)
-                                                  print("Attempting to query EDIT")
+                                                  message("Attempting to query EDIT")
+                                                  message(query)
                                                   # Full query results for geoindicators based on ecosite
                                                   full_results <- httr::GET(query,
                                                                             config = httr::timeout(30))
@@ -417,6 +418,7 @@ server <- function(input, output, session) {
                                                   results_character <- rawToChar(results_raw)
                                                   # Convert from character to data frame
                                                   results <- jsonlite::fromJSON(results_character)
+                                                  message("Results converted from json to character")
                                                   
                                                   # THIS IS IMPORTANT!
                                                   # Remove rows without data, which apparently happens
@@ -441,7 +443,8 @@ server <- function(input, output, session) {
                    
                    results <- do.call(rbind,
                                       query_results_list)
-                   
+                   message("results currently are:")
+                   message(results)
                    # So we can tell the user later which actually got queried
                    if (is.null(results)) {
                      workspace$missing_ecosites <- ecosite_id_vector
@@ -769,7 +772,7 @@ server <- function(input, output, session) {
                    
                    percent_by_category <- round(100 * benchmark_results_summary / sum(benchmark_results_summary),
                                                 digits = 1)
-
+                   
                    # Plot the histogram with benchmark info!
                    workspace$benchmark_plot <- ggplot(data = plotting_data) +
                      geom_histogram(aes(y = current_variable,
