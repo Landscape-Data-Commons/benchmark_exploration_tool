@@ -593,6 +593,10 @@ server <- function(input, output, session) {
   #### When the plot button is hit, do this ####
   observeEvent(eventExpr = input$plot_button,
                handlerExpr = {
+                 showNotification(ui = "Drawing plots. Please wait.",
+                                  duration = NULL,
+                                  closeButton = FALSE,
+                                  id = "plotting")
                  # Get a copy of the data to manipulate for plotting
                  plotting_data <- workspace$raw_data
                  
