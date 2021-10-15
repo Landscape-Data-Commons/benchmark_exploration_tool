@@ -490,9 +490,7 @@ server <- function(input, output, session) {
                      # Put it in the workspace list
                      workspace$raw_data <- data
                    } else {
-                     output$ecosite_error <- renderText(paste("The following are not valid ecological site IDs recognized by EDIT:",
-                                                              paste(workspace$missing_ecosites,
-                                                                    collapse = ", ")))
+                     workspace$raw_data <- NULL
                    }
                  }
                })
