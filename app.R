@@ -59,7 +59,11 @@ ui <- fluidPage(
   ),
   
   # Application title
-  titlePanel("Plotting Indicator Values and Benchmarks"),
+  titlePanel(img(src = "combined_logos.png",
+                 align = "right"),
+             windowTitle = "Plotting Indicator Values and Benchmarks"),
+  titlePanel(title = "Plotting Indicator Values and Benchmarks"),
+  
   
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
@@ -98,7 +102,9 @@ ui <- fluidPage(
       # Only show if there are plot images to download
       conditionalPanel(condition = "input.plot_button >= 1",
                        downloadButton(outputId = 'downloadData',
-                                      label = 'Download results'))
+                                      label = 'Download results')),
+      
+      helpText("Created at the USDA-ARS Jornada Experimental Range in collaboration with the Bureau of Land Management")
     ),
     
     # Show a plot of the generated distribution
