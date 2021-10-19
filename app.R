@@ -114,228 +114,235 @@ ui <- fluidPage(
                            includeHTML("instructions.html")),
                   
                   tabPanel(title = "Benchmark ranges",
-                           selectInput(inputId = "range_count",
-                                       label = "Number of benchmark ranges",
-                                       choices = 2:6,
-                                       selected = 2),
-                           # Labels
-                           fluidRow(column(width = 2,
-                                           helpText("Lower limit")),
-                                    column(width = 1,
-                                           helpText("Lower limit relation")),
-                                    column(width = 1,
-                                           helpText("Indicator value")),
-                                    column(width = 1,
-                                           helpText("Upper limit relation")),
-                                    column(width = 2,
-                                           helpText("Upper limit")),
-                                    
-                                    column(width = 3,
-                                           helpText("Benchmark category")),
-                                    hr()
-                           ),
-                           # Row 1
-                           fluidRow(column(width = 2,
-                                           numericInput(inputId = "benchmark_range_limit_lower_1",
-                                                        label = "",
-                                                        value = 0,
-                                                        min = -Inf,
-                                                        max = Inf)),
-                                    column(width = 1,
-                                           selectInput(inputId = "benchmark_relationship_lower_1",
-                                                       label = "",
-                                                       choices = c("<", "<="),
-                                                       selected = "<=")),
-                                    column(width = 1,
-                                           helpText("x")),
-                                    column(width = 1,
-                                           selectInput(inputId = "benchmark_relationship_upper_1",
-                                                       label = "",
-                                                       choices = c("<", "<="),
-                                                       selected = "<=")),
-                                    column(width = 2,
-                                           numericInput(inputId = "benchmark_range_limit_upper_1",
-                                                        label = "",
-                                                        value = 50,
-                                                        min = -Inf,
-                                                        max = Inf)),
-                                    
-                                    column(width = 3,
-                                           textInput(inputId = "benchmark_category_1",
-                                                     label = "",
-                                                     placeholder = "Not Meeting",
-                                                     value = "Not Meeting")),
-                                    hr()
-                           ),
-                           # Row 2
-                           fluidRow(column(width = 2,
-                                           numericInput(inputId = "benchmark_range_limit_lower_2",
-                                                        label = "",
-                                                        value = 50,
-                                                        min = -Inf,
-                                                        max = Inf)),
-                                    column(width = 1,
-                                           selectInput(inputId = "benchmark_relationship_lower_2",
-                                                       label = "",
-                                                       choices = c("<", "<="),
-                                                       selected = "<")),
-                                    column(width = 1,
-                                           helpText("x")),
-                                    column(width = 1,
-                                           selectInput(inputId = "benchmark_relationship_upper_2",
-                                                       label = "",
-                                                       choices = c("<", "<="),
-                                                       selected = "<=")),
-                                    column(width = 2,
-                                           numericInput(inputId = "benchmark_range_limit_upper_2",
-                                                        label = "",
-                                                        value = 100,
-                                                        min = -Inf,
-                                                        max = Inf)),
-                                    
-                                    column(width = 3,
-                                           textInput(inputId = "benchmark_category_2",
-                                                     label = "",
-                                                     placeholder = "Not Meeting",
-                                                     value = "Meeting")),
-                                    hr()
-                           ),
-                           # Row 3
-                           conditionalPanel(condition = "input.range_count > 2",
+                           checkboxInput(inputId = "use_benchmarks",
+                                         label = "Apply benchmarks",
+                                         value = FALSE),
+                           
+                           conditionalPanel(condition = "input.use_benchmarks",
+                                            selectInput(inputId = "range_count",
+                                                        label = "Number of benchmark ranges",
+                                                        choices = 2:6,
+                                                        selected = 2),
+                                            # Labels
                                             fluidRow(column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_lower_3",
+                                                            helpText("Lower limit")),
+                                                     column(width = 1,
+                                                            helpText("Lower limit relation")),
+                                                     column(width = 1,
+                                                            helpText("Indicator value")),
+                                                     column(width = 1,
+                                                            helpText("Upper limit relation")),
+                                                     column(width = 2,
+                                                            helpText("Upper limit")),
+                                                     
+                                                     column(width = 3,
+                                                            helpText("Benchmark category")),
+                                                     hr()
+                                            ),
+                                            # Row 1
+                                            fluidRow(column(width = 2,
+                                                            numericInput(inputId = "benchmark_range_limit_lower_1",
                                                                          label = "",
                                                                          value = 0,
                                                                          min = -Inf,
                                                                          max = Inf)),
                                                      column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_lower_3",
+                                                            selectInput(inputId = "benchmark_relationship_lower_1",
                                                                         label = "",
                                                                         choices = c("<", "<="),
-                                                                        selected = "<")),
+                                                                        selected = "<=")),
                                                      column(width = 1,
                                                             helpText("x")),
                                                      column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_upper_3",
+                                                            selectInput(inputId = "benchmark_relationship_upper_1",
                                                                         label = "",
                                                                         choices = c("<", "<="),
                                                                         selected = "<=")),
                                                      column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_upper_3",
+                                                            numericInput(inputId = "benchmark_range_limit_upper_1",
                                                                          label = "",
                                                                          value = 50,
                                                                          min = -Inf,
                                                                          max = Inf)),
                                                      
                                                      column(width = 3,
-                                                            textInput(inputId = "benchmark_category_3",
+                                                            textInput(inputId = "benchmark_category_1",
                                                                       label = "",
                                                                       placeholder = "Not Meeting",
-                                                                      value = "")),
+                                                                      value = "Not Meeting")),
                                                      hr()
-                                            )),
-                           # Row 4
-                           conditionalPanel(condition = "input.range_count > 3",
+                                            ),
+                                            # Row 2
                                             fluidRow(column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_lower_4",
+                                                            numericInput(inputId = "benchmark_range_limit_lower_2",
                                                                          label = "",
-                                                                         value = 0,
+                                                                         value = 50,
                                                                          min = -Inf,
                                                                          max = Inf)),
                                                      column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_lower_4",
+                                                            selectInput(inputId = "benchmark_relationship_lower_2",
                                                                         label = "",
                                                                         choices = c("<", "<="),
                                                                         selected = "<")),
                                                      column(width = 1,
                                                             helpText("x")),
                                                      column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_upper_4",
+                                                            selectInput(inputId = "benchmark_relationship_upper_2",
                                                                         label = "",
                                                                         choices = c("<", "<="),
                                                                         selected = "<=")),
                                                      column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_upper_4",
+                                                            numericInput(inputId = "benchmark_range_limit_upper_2",
                                                                          label = "",
-                                                                         value = 50,
+                                                                         value = 100,
                                                                          min = -Inf,
                                                                          max = Inf)),
                                                      
                                                      column(width = 3,
-                                                            textInput(inputId = "benchmark_category_4",
+                                                            textInput(inputId = "benchmark_category_2",
                                                                       label = "",
                                                                       placeholder = "Not Meeting",
-                                                                      value = "")),
+                                                                      value = "Meeting")),
                                                      hr()
-                                            )),
-                           # Row 5
-                           conditionalPanel(condition = "input.range_count > 4",
-                                            fluidRow(column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_lower_5",
-                                                                         label = "",
-                                                                         value = 0,
-                                                                         min = -Inf,
-                                                                         max = Inf)),
-                                                     column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_lower_5",
-                                                                        label = "",
-                                                                        choices = c("<", "<="),
-                                                                        selected = "<")),
-                                                     column(width = 1,
-                                                            helpText("x")),
-                                                     column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_upper_5",
-                                                                        label = "",
-                                                                        choices = c("<", "<="),
-                                                                        selected = "<=")),
-                                                     column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_upper_5",
-                                                                         label = "",
-                                                                         value = 50,
-                                                                         min = -Inf,
-                                                                         max = Inf)),
-                                                     
-                                                     column(width = 3,
-                                                            textInput(inputId = "benchmark_category_5",
-                                                                      label = "",
-                                                                      placeholder = "Not Meeting",
-                                                                      value = "")),
-                                                     hr()
-                                            )),
-                           # Row 6
-                           conditionalPanel(condition = "input.range_count > 5",
-                                            fluidRow(column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_lower_6",
-                                                                         label = "",
-                                                                         value = 0,
-                                                                         min = -Inf,
-                                                                         max = Inf)),
-                                                     column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_lower_6",
-                                                                        label = "",
-                                                                        choices = c("<", "<="),
-                                                                        selected = "<")),
-                                                     column(width = 1,
-                                                            helpText("x")),
-                                                     column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_upper_6",
-                                                                        label = "",
-                                                                        choices = c("<", "<="),
-                                                                        selected = "<=")),
-                                                     column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_upper_6",
-                                                                         label = "",
-                                                                         value = 50,
-                                                                         min = -Inf,
-                                                                         max = Inf)),
-                                                     
-                                                     column(width = 3,
-                                                            textInput(inputId = "benchmark_category_6",
-                                                                      label = "",
-                                                                      placeholder = "Not Meeting",
-                                                                      value = "")),
-                                                     hr()
-                                            ))
+                                            ),
+                                            # Row 3
+                                            conditionalPanel(condition = "input.range_count > 2",
+                                                             fluidRow(column(width = 2,
+                                                                             numericInput(inputId = "benchmark_range_limit_lower_3",
+                                                                                          label = "",
+                                                                                          value = 0,
+                                                                                          min = -Inf,
+                                                                                          max = Inf)),
+                                                                      column(width = 1,
+                                                                             selectInput(inputId = "benchmark_relationship_lower_3",
+                                                                                         label = "",
+                                                                                         choices = c("<", "<="),
+                                                                                         selected = "<")),
+                                                                      column(width = 1,
+                                                                             helpText("x")),
+                                                                      column(width = 1,
+                                                                             selectInput(inputId = "benchmark_relationship_upper_3",
+                                                                                         label = "",
+                                                                                         choices = c("<", "<="),
+                                                                                         selected = "<=")),
+                                                                      column(width = 2,
+                                                                             numericInput(inputId = "benchmark_range_limit_upper_3",
+                                                                                          label = "",
+                                                                                          value = 50,
+                                                                                          min = -Inf,
+                                                                                          max = Inf)),
+                                                                      
+                                                                      column(width = 3,
+                                                                             textInput(inputId = "benchmark_category_3",
+                                                                                       label = "",
+                                                                                       placeholder = "Not Meeting",
+                                                                                       value = "")),
+                                                                      hr()
+                                                             )),
+                                            # Row 4
+                                            conditionalPanel(condition = "input.range_count > 3",
+                                                             fluidRow(column(width = 2,
+                                                                             numericInput(inputId = "benchmark_range_limit_lower_4",
+                                                                                          label = "",
+                                                                                          value = 0,
+                                                                                          min = -Inf,
+                                                                                          max = Inf)),
+                                                                      column(width = 1,
+                                                                             selectInput(inputId = "benchmark_relationship_lower_4",
+                                                                                         label = "",
+                                                                                         choices = c("<", "<="),
+                                                                                         selected = "<")),
+                                                                      column(width = 1,
+                                                                             helpText("x")),
+                                                                      column(width = 1,
+                                                                             selectInput(inputId = "benchmark_relationship_upper_4",
+                                                                                         label = "",
+                                                                                         choices = c("<", "<="),
+                                                                                         selected = "<=")),
+                                                                      column(width = 2,
+                                                                             numericInput(inputId = "benchmark_range_limit_upper_4",
+                                                                                          label = "",
+                                                                                          value = 50,
+                                                                                          min = -Inf,
+                                                                                          max = Inf)),
+                                                                      
+                                                                      column(width = 3,
+                                                                             textInput(inputId = "benchmark_category_4",
+                                                                                       label = "",
+                                                                                       placeholder = "Not Meeting",
+                                                                                       value = "")),
+                                                                      hr()
+                                                             )),
+                                            # Row 5
+                                            conditionalPanel(condition = "input.range_count > 4",
+                                                             fluidRow(column(width = 2,
+                                                                             numericInput(inputId = "benchmark_range_limit_lower_5",
+                                                                                          label = "",
+                                                                                          value = 0,
+                                                                                          min = -Inf,
+                                                                                          max = Inf)),
+                                                                      column(width = 1,
+                                                                             selectInput(inputId = "benchmark_relationship_lower_5",
+                                                                                         label = "",
+                                                                                         choices = c("<", "<="),
+                                                                                         selected = "<")),
+                                                                      column(width = 1,
+                                                                             helpText("x")),
+                                                                      column(width = 1,
+                                                                             selectInput(inputId = "benchmark_relationship_upper_5",
+                                                                                         label = "",
+                                                                                         choices = c("<", "<="),
+                                                                                         selected = "<=")),
+                                                                      column(width = 2,
+                                                                             numericInput(inputId = "benchmark_range_limit_upper_5",
+                                                                                          label = "",
+                                                                                          value = 50,
+                                                                                          min = -Inf,
+                                                                                          max = Inf)),
+                                                                      
+                                                                      column(width = 3,
+                                                                             textInput(inputId = "benchmark_category_5",
+                                                                                       label = "",
+                                                                                       placeholder = "Not Meeting",
+                                                                                       value = "")),
+                                                                      hr()
+                                                             )),
+                                            # Row 6
+                                            conditionalPanel(condition = "input.range_count > 5",
+                                                             fluidRow(column(width = 2,
+                                                                             numericInput(inputId = "benchmark_range_limit_lower_6",
+                                                                                          label = "",
+                                                                                          value = 0,
+                                                                                          min = -Inf,
+                                                                                          max = Inf)),
+                                                                      column(width = 1,
+                                                                             selectInput(inputId = "benchmark_relationship_lower_6",
+                                                                                         label = "",
+                                                                                         choices = c("<", "<="),
+                                                                                         selected = "<")),
+                                                                      column(width = 1,
+                                                                             helpText("x")),
+                                                                      column(width = 1,
+                                                                             selectInput(inputId = "benchmark_relationship_upper_6",
+                                                                                         label = "",
+                                                                                         choices = c("<", "<="),
+                                                                                         selected = "<=")),
+                                                                      column(width = 2,
+                                                                             numericInput(inputId = "benchmark_range_limit_upper_6",
+                                                                                          label = "",
+                                                                                          value = 50,
+                                                                                          min = -Inf,
+                                                                                          max = Inf)),
+                                                                      
+                                                                      column(width = 3,
+                                                                             textInput(inputId = "benchmark_category_6",
+                                                                                       label = "",
+                                                                                       placeholder = "Not Meeting",
+                                                                                       value = "")),
+                                                                      hr()
+                                                             ))
+                                            ),
+                           
                   ),
                   
                   tabPanel(title = "Results",
@@ -687,135 +694,9 @@ server <- function(input, output, session) {
                             units = "in")
                    }
                    
-                   ##### Do the benchmarking ####
-                   print("Benchmark time!")
-                   # Now time to deal with benchmarks
-                   # Make a data frame with all the benchmark ranges in it
-                   benchmark_table <- data.frame(range_limit_lower = c(input$benchmark_range_limit_lower_1,
-                                                                       input$benchmark_range_limit_lower_2,
-                                                                       input$benchmark_range_limit_lower_3,
-                                                                       input$benchmark_range_limit_lower_4,
-                                                                       input$benchmark_range_limit_lower_5,
-                                                                       input$benchmark_range_limit_lower_6),
-                                                 range_relation_lower = c(input$benchmark_relationship_lower_1,
-                                                                          input$benchmark_relationship_lower_2,
-                                                                          input$benchmark_relationship_lower_3,
-                                                                          input$benchmark_relationship_lower_4,
-                                                                          input$benchmark_relationship_lower_5,
-                                                                          input$benchmark_relationship_lower_6),
-                                                 range_relation_upper = c(input$benchmark_relationship_upper_1,
-                                                                          input$benchmark_relationship_upper_2,
-                                                                          input$benchmark_relationship_upper_3,
-                                                                          input$benchmark_relationship_upper_4,
-                                                                          input$benchmark_relationship_upper_5,
-                                                                          input$benchmark_relationship_upper_6),
-                                                 range_limit_upper = c(input$benchmark_range_limit_upper_1,
-                                                                       input$benchmark_range_limit_upper_2,
-                                                                       input$benchmark_range_limit_upper_3,
-                                                                       input$benchmark_range_limit_upper_4,
-                                                                       input$benchmark_range_limit_upper_5,
-                                                                       input$benchmark_range_limit_upper_6),
-                                                 benchmark_category = c(input$benchmark_category_1,
-                                                                        input$benchmark_category_2,
-                                                                        input$benchmark_category_3,
-                                                                        input$benchmark_category_4,
-                                                                        input$benchmark_category_5,
-                                                                        input$benchmark_category_6))
-                   
-                   # Limit that to just the first however many ranges the user has chosen to define for now
-                   # This means that even if they populated more ranges then reduced the count they'll still
-                   # only get the ones they can see in the app
-                   benchmark_table <- benchmark_table[1:input$range_count, ]
-                   # Also strip out undefined ranges
-                   invalid_benchmark_indices <- benchmark_table$benchmark_category == ""
-                   benchmark_table <- benchmark_table[!invalid_benchmark_indices, ]
-                   
-                   print(benchmark_table)
-                   # First create the string vector we'll write into for each category
-                   benchmark_results <- rep("Undefined",
-                                            times = nrow(plotting_data))
-                   # Then step through the ranges in a loop
-                   # We loop because the user might've accidentally defined it so that ranges overlap
-                   for (benchmark in 1:nrow(benchmark_table)) {
-                     current_range_string_lower <- paste(benchmark_table$range_limit_lower[benchmark],
-                                                         benchmark_table$range_relation_lower[benchmark])
-                     current_range_string_upper <- paste(benchmark_table$range_relation_upper[benchmark],
-                                                         benchmark_table$range_limit_upper[benchmark])
-                     current_benchmark_category <- benchmark_table$benchmark_category[benchmark]
-                     
-                     # Convert the range inequalities into evaluatable statements by addint in the values
-                     evaluation_strings_lower <- sapply(X = plotting_data$current_variable,
-                                                        range_string = current_range_string_lower,
-                                                        FUN = function(X, range_string){
-                                                          paste(range_string, X)
-                                                        })
-                     evaluation_strings_upper <- sapply(X = plotting_data$current_variable,
-                                                        range_string = current_range_string_upper,
-                                                        FUN = function(X, range_string){
-                                                          paste(X, range_string)
-                                                        })
-                     # Then parse and evaluate those strings
-                     # This is the easiest way I've been able to come up with for evaluating benchmarks
-                     # that are entered piecemeal and with a dropdown
-                     lower_strings_evaluated <- sapply(X = evaluation_strings_lower,
-                                                       FUN = function(X){
-                                                         eval(parse(text = X))
-                                                       })
-                     upper_strings_evaluated <- sapply(X = evaluation_strings_upper,
-                                                       FUN = function(X){
-                                                         eval(parse(text = X))
-                                                       })
-                     
-                     # Write in the benchmark category into our benchmark_results at the appropriate indices
-                     correct_indices <- lower_strings_evaluated & upper_strings_evaluated
-                     benchmark_results[correct_indices] <- current_benchmark_category
-                   }
-                   
-                   
-                   # Put the results into the data
-                   plotting_data[["benchmark_results"]] <- benchmark_results
-                   
-                   # Calculate the percent of points meeting and not meeting
-                   benchmark_results_summary <- table(benchmark_results)
-                   missing_categories <- benchmark_table$benchmark_category[!(benchmark_table$benchmark_category %in% names(benchmark_results_summary))]
-                   if (length(missing_categories) > 0) {
-                     for (missing_category in missing_categories) {
-                       benchmark_results_summary[[missing_category]] <- 0
-                     }
-                   }
-                   
-                   percent_by_category <- round(100 * benchmark_results_summary / sum(benchmark_results_summary),
-                                                digits = 1)
-                   
-                   # Plot the histogram with benchmark info!
-                   workspace$benchmark_plot <- ggplot(data = plotting_data) +
-                     geom_histogram(aes(y = current_variable,
-                                        fill = benchmark_results),
-                                    binwidth = 1) +
-                     scale_fill_manual(values = workspace$palette) +
-                     labs(x = "Count of data points",
-                          y = input$variable_name,
-                          fill = "Benchmark status") +
-                     theme(panel.grid = element_blank(),
-                           panel.background = element_rect(fill = "gray95")) +
-                     coord_flip()
-                   
-                   output$benchmark_plot <- renderPlot(workspace$benchmark_plot)
-                   # output$benchmark_plot <- renderPlotly(plotly::ggplotly(workspace$benchmark_plot))
-                   
-                   ggsave(filename = paste0(workspace$temp_directory, "/fig2_benchmark_plot.png"),
-                          plot = workspace$benchmark_plot,
-                          device = "png",
-                          width = 9,
-                          height = 4,
-                          units = "in")
-                   
-                   updateTabsetPanel(session,
-                                     inputId = "maintabs",
-                                     selected = "Results") 
                    
                    # Create the caption for the quantile plot
-                   quantile_plot_caption <- paste0("Figure 1: The distribution of values for the indicator across ", sum(benchmark_results_summary), " data points, broken into ", length(quantiles) + 1, " quantiles. ",
+                   quantile_plot_caption <- paste0("Figure 1: The distribution of values for the indicator across ", nrow(plotting_data), " data points, broken into ", length(quantiles) + 1, " quantiles. ",
                                                    paste0(paste0(paste0(names(quantiles), " of data points have a value <= "),
                                                                  round(quantiles, digits = 1),
                                                                  collapse = ", "),
@@ -823,31 +704,193 @@ server <- function(input, output, session) {
                    
                    output$quantile_breaks <- renderText(quantile_plot_caption)
                    
-                   # Make the statements about each condition category for the caption
-                   category_statements <- paste0(benchmark_results_summary, " data points (", percent_by_category, "%) ",
-                                                 "fall in the benchmark category ", names(benchmark_results_summary),
-                                                 collapse = ", ")
+                   ##### Do the benchmarking ####
+                   if (input$use_benchmarks) {
+                     print("Benchmark time!")
+                     # Now time to deal with benchmarks
+                     # Make a data frame with all the benchmark ranges in it
+                     benchmark_table <- data.frame(range_limit_lower = c(input$benchmark_range_limit_lower_1,
+                                                                         input$benchmark_range_limit_lower_2,
+                                                                         input$benchmark_range_limit_lower_3,
+                                                                         input$benchmark_range_limit_lower_4,
+                                                                         input$benchmark_range_limit_lower_5,
+                                                                         input$benchmark_range_limit_lower_6),
+                                                   range_relation_lower = c(input$benchmark_relationship_lower_1,
+                                                                            input$benchmark_relationship_lower_2,
+                                                                            input$benchmark_relationship_lower_3,
+                                                                            input$benchmark_relationship_lower_4,
+                                                                            input$benchmark_relationship_lower_5,
+                                                                            input$benchmark_relationship_lower_6),
+                                                   range_relation_upper = c(input$benchmark_relationship_upper_1,
+                                                                            input$benchmark_relationship_upper_2,
+                                                                            input$benchmark_relationship_upper_3,
+                                                                            input$benchmark_relationship_upper_4,
+                                                                            input$benchmark_relationship_upper_5,
+                                                                            input$benchmark_relationship_upper_6),
+                                                   range_limit_upper = c(input$benchmark_range_limit_upper_1,
+                                                                         input$benchmark_range_limit_upper_2,
+                                                                         input$benchmark_range_limit_upper_3,
+                                                                         input$benchmark_range_limit_upper_4,
+                                                                         input$benchmark_range_limit_upper_5,
+                                                                         input$benchmark_range_limit_upper_6),
+                                                   benchmark_category = c(input$benchmark_category_1,
+                                                                          input$benchmark_category_2,
+                                                                          input$benchmark_category_3,
+                                                                          input$benchmark_category_4,
+                                                                          input$benchmark_category_5,
+                                                                          input$benchmark_category_6))
+                     
+                     # Limit that to just the first however many ranges the user has chosen to define for now
+                     # This means that even if they populated more ranges then reduced the count they'll still
+                     # only get the ones they can see in the app
+                     benchmark_table <- benchmark_table[1:input$range_count, ]
+                     # Also strip out undefined ranges
+                     invalid_benchmark_indices <- benchmark_table$benchmark_category == ""
+                     benchmark_table <- benchmark_table[!invalid_benchmark_indices, ]
+                     
+                     print(benchmark_table)
+                     # First create the string vector we'll write into for each category
+                     benchmark_results <- rep("Undefined",
+                                              times = nrow(plotting_data))
+                     # Then step through the ranges in a loop
+                     # We loop because the user might've accidentally defined it so that ranges overlap
+                     for (benchmark in 1:nrow(benchmark_table)) {
+                       current_range_string_lower <- paste(benchmark_table$range_limit_lower[benchmark],
+                                                           benchmark_table$range_relation_lower[benchmark])
+                       current_range_string_upper <- paste(benchmark_table$range_relation_upper[benchmark],
+                                                           benchmark_table$range_limit_upper[benchmark])
+                       current_benchmark_category <- benchmark_table$benchmark_category[benchmark]
+                       
+                       # Convert the range inequalities into evaluatable statements by addint in the values
+                       evaluation_strings_lower <- sapply(X = plotting_data$current_variable,
+                                                          range_string = current_range_string_lower,
+                                                          FUN = function(X, range_string){
+                                                            paste(range_string, X)
+                                                          })
+                       evaluation_strings_upper <- sapply(X = plotting_data$current_variable,
+                                                          range_string = current_range_string_upper,
+                                                          FUN = function(X, range_string){
+                                                            paste(X, range_string)
+                                                          })
+                       # Then parse and evaluate those strings
+                       # This is the easiest way I've been able to come up with for evaluating benchmarks
+                       # that are entered piecemeal and with a dropdown
+                       lower_strings_evaluated <- sapply(X = evaluation_strings_lower,
+                                                         FUN = function(X){
+                                                           eval(parse(text = X))
+                                                         })
+                       upper_strings_evaluated <- sapply(X = evaluation_strings_upper,
+                                                         FUN = function(X){
+                                                           eval(parse(text = X))
+                                                         })
+                       
+                       # Write in the benchmark category into our benchmark_results at the appropriate indices
+                       correct_indices <- lower_strings_evaluated & upper_strings_evaluated
+                       benchmark_results[correct_indices] <- current_benchmark_category
+                     }
+                     
+                     
+                     # Put the results into the data
+                     plotting_data[["benchmark_results"]] <- benchmark_results
+                     
+                     # Calculate the percent of points meeting and not meeting
+                     benchmark_results_summary <- table(benchmark_results)
+                     
+                     message("Benchmark results summary:")
+                     print(benchmark_results_summary)
+                     
+                     missing_categories <- benchmark_table$benchmark_category[!(benchmark_table$benchmark_category %in% names(benchmark_results_summary))]
+                     if (length(missing_categories) > 0) {
+                       for (missing_category in missing_categories) {
+                         benchmark_results_summary[[missing_category]] <- 0
+                       }
+                     }
+                     
+                     percent_by_category <- round(100 * benchmark_results_summary / sum(benchmark_results_summary),
+                                                  digits = 1)
+                     
+                     # Plot the histogram with benchmark info!
+                     workspace$benchmark_plot <- ggplot(data = plotting_data) +
+                       geom_histogram(aes(y = current_variable,
+                                          fill = benchmark_results),
+                                      binwidth = 1) +
+                       scale_fill_manual(values = workspace$palette) +
+                       labs(x = "Count of data points",
+                            y = input$variable_name,
+                            fill = "Benchmark status") +
+                       theme(panel.grid = element_blank(),
+                             panel.background = element_rect(fill = "gray95")) +
+                       coord_flip()
+                     
+                     output$benchmark_plot <- renderPlot(workspace$benchmark_plot)
+                     # output$benchmark_plot <- renderPlotly(plotly::ggplotly(workspace$benchmark_plot))
+                     
+                     ggsave(filename = paste0(workspace$temp_directory, "/fig2_benchmark_plot.png"),
+                            plot = workspace$benchmark_plot,
+                            device = "png",
+                            width = 9,
+                            height = 4,
+                            units = "in")
+                     
+                     # Make the statements about each condition category for the caption
+                     category_statements <- paste0(benchmark_results_summary, " data points (", percent_by_category, "%) ",
+                                                   "fall in the benchmark category ", names(benchmark_results_summary),
+                                                   collapse = ", ")
+                     
+                     # Create the caption for the benchmark plot
+                     benchmark_plot_caption <- paste0("Figure 2: The distribution of values for the indicator across ", sum(benchmark_results_summary),
+                                                      " data points classified into benchmark categories. ",
+                                                      "Of the ", sum(benchmark_results_summary), " data points, ",
+                                                      category_statements, ".")
+                     
+                     output$benchmark_summary <- renderText(benchmark_plot_caption)
+                     
+                     output_data <- plotting_data[, c(input$id_variables,
+                                                      input$variable,
+                                                      "benchmark_results")]
+                     
+                     # Create a .zip fle in case user wants the plots, which depends on a system call
+                     # I'm not sure why we switch working directories for this, but I'm afraid to change it
+                     message(paste0("Current temp directory is ", workspace$temp_directory))
+                     setwd(workspace$temp_directory)
+                     
+                     # Write out the benchmarked data for download
+                     write.csv(output_data,
+                               file = "benchmarked_data.csv",
+                               row.names = FALSE)
+                   } else {
+                     message("No benchmarking!")
+                     message("Attempting to delete fig2_benchmark_plot.png")
+                     if (file.exists(paste0(workspace$temp_directory, "/fig2_benchmark_plot.png"))) {
+                       file.remove(paste0(workspace$temp_directory, "/fig2_benchmark_plot.png"))
+                     }
+                     if (file.exists(paste0(workspace$temp_directory, "/fig2_benchmark_plot.png"))) {
+                       message("fig2_benchmark_plot.png does exists. :(")
+                     } else {
+                       message("fig2_benchmark_plot.png does not exist. :D")
+                     }
+                     message("Attempting to delete benchmarked_data.csv")
+                     if (file.exists(paste0(workspace$temp_directory, "/benchmarked_data.csv"))) {
+                       file.remove(paste0(workspace$temp_directory, "/benchmarked_data.csv"))
+                     }
+                     if (file.exists(paste0(workspace$temp_directory, "/benchmarked_data.csv"))) {
+                       message("benchmarked_data.csv does exist :(")
+                     } else {
+                       message("benchmarked_data.csv does not exist :D")
+                     }
+                     
+                     output$benchmark_plot <- NULL
+                     benchmark_plot_caption <- NULL
+                     output$benchmark_summary <- NULL
+                   }
                    
-                   # Create the caption for the benchmark plot
-                   benchmark_plot_caption <- paste0("Figure 2: The distribution of values for the indicator across ", sum(benchmark_results_summary),
-                                                    " data points classified into benchmark categories. ",
-                                                    "Of the ", sum(benchmark_results_summary), " data points, ",
-                                                    category_statements, ".")
-                   
-                   output$benchmark_summary <- renderText(benchmark_plot_caption)
-                   
-                   output_data <- plotting_data[, c(input$id_variables,
-                                                    input$variable,
-                                                    "benchmark_results")]
-                   
-                   # Create a .zip fle in case user wants the plots, which depends on a system call
-                   # I'm not sure why we switch working directories for this, but I'm afraid to change it
+                   updateTabsetPanel(session,
+                                     inputId = "maintabs",
+                                     selected = "Results") 
+
+                   message(paste0("Setting work directory to ",
+                                  workspace$temp_directory))
                    setwd(workspace$temp_directory)
-                   
-                   # Write out the benchmarked data for download
-                   write.csv(output_data,
-                             file = "benchmarked_data.csv",
-                             row.names = FALSE)
                    
                    # Write out the captions as a text file for downloading
                    writeLines(text = paste(quantile_plot_caption,
@@ -855,9 +898,16 @@ server <- function(input, output, session) {
                                            sep = "\n\n"),
                               con = "captions.txt")
                    
-                   files_to_zip <- list.files(pattern = "\\.(png|txt|csv)$",
-                                              ignore.case = TRUE)
+                   files_to_zip <- list.files(path = workspace$temp_directory,
+                                              pattern = "\\.(png|txt|csv)$",
+                                              ignore.case = TRUE,
+                                              full.names = TRUE)
                    
+                   message("Preparing to zip up the following files:")
+                   message(paste0(files_to_zip,
+                                  collapse = ", "))
+                   
+
                    switch(Sys.info()[["sysname"]],
                           Windows = {
                             system(paste0("cmd.exe /c \"C:\\Program Files\\7-Zip\\7z\".exe a -tzip plots.zip ",
@@ -870,7 +920,9 @@ server <- function(input, output, session) {
                                                collapse = " ")))
                           })
                    if (!any(grepl(x = list.files(workspace$temp_directory), pattern = "^plots\\.(zip)|(ZIP)"))) {
-                     stop("No valid .zip file called 'results' exists in the directory.")
+                     stop("No valid .zip file called 'plots' exists in the directory.")
+                   } else {
+                     message("plots.zip does exist in the temp directory")
                    }
                    setwd(workspace$original_directory)
                  }
