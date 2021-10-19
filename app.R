@@ -77,7 +77,6 @@ ui <- fluidPage(
                 label = "Ecological Site ID",
                 value = "",
                 placeholder = "R042XB012NM"),
-      # textOutput(outputId = "ecosite_error"),
       actionButton(inputId = "fetch_data",
                    label = "Fetch data from the Landscape Data Commons"),
       hr(),
@@ -371,7 +370,7 @@ server <- function(input, output, session) {
                                           "#75c6c5ff",
                                           "#fd6794ff"))
   
-  # Nor are there plots
+    # Nor are there plots
   output$plot_files <- renderText("FALSE")
   
   #### When a CSV is uploaded, do this ####
