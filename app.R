@@ -353,7 +353,7 @@ ui <- fluidPage(
                            # plotlyOutput("benchmark_plot"),
                            textOutput("benchmark_summary")),
                   tabPanel(title = "Data",
-                           tableOutput("data_table")))
+                           dataTableOutput("data_table")))
       
     )
   )
@@ -535,7 +535,7 @@ server <- function(input, output, session) {
                                      inputId = "variable",
                                      choices = c("", variable_names[viable_variables]))
                    
-                   output$data_table <- renderTable(workspace$raw_data)
+                   output$data_table <- renderDataTable(workspace$raw_data)
                    
                    updateTabsetPanel(session = session,
                                      inputId = "maintabs",
