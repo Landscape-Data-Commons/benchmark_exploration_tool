@@ -726,8 +726,9 @@ server <- function(input, output, session) {
                    
                    # Make the dang plot happen!
                    if (nrow(plotting_data) > 0) {
-                     workspace$quantile_plot <- ggplot(data = plotting_data) +
-                       geom_histogram(aes(y = current_variable,
+                     workspace$quantile_plot <- ggplot() +
+                       geom_histogram(data = plotting_data,
+                                      aes(y = current_variable,
                                           fill = Quantile),
                                       binwidth = 1) +
                        scale_fill_manual(values = workspace$palette) +
@@ -885,8 +886,9 @@ server <- function(input, output, session) {
                                                   digits = 1)
                      
                      # Plot the histogram with benchmark info!
-                     workspace$benchmark_plot <- ggplot(data = plotting_data) +
-                       geom_histogram(aes(y = current_variable,
+                     workspace$benchmark_plot <- ggplot() +
+                       geom_histogram(data = plotting_data,
+                                      aes(y = current_variable,
                                           fill = benchmark_results),
                                       binwidth = 1) +
                        scale_fill_manual(values = workspace$palette) +
