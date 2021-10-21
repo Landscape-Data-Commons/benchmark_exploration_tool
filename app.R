@@ -511,7 +511,7 @@ server <- function(input, output, session) {
                  removeNotification(id = "downloading")
                })
   
-  #### When a CSV is read in, do this ####
+  #### Raw data are updated, do this ####
   observeEvent(eventExpr = workspace$raw_data,
                handlerExpr = {
                  if (!is.null(workspace$raw_data)) {
