@@ -93,6 +93,29 @@ ui <- fluidPage(
       textInput(inputId = "quantiles",
                 label = "Quantile break percentages, separated by commas",
                 value = "25, 50, 75"),
+      
+      checkboxInput(inputId = "compare",
+                    label = "Mark comparison value on figures",
+                    value = FALSE),
+
+      conditionalPanel(condition = "input.compare",
+                       radioButtons(inputId = "comparison_type",
+                                    label = "Comparison value source",
+                                    choices = c("Manual" = "manual", "From current data" = "plot_id"),
+                                    selected = "manual"),
+                       conditionalPanel(condition = "input.comparison_type == 'manual'",
+                                        numericInput(inputId = "manual_comparison_value",
+                                                     label = "Indicator value",
+                                                     value = 0)),
+                       conditionalPanel(condition = "input.comparison_type == 'plot_id'",
+                                        selectInput(inputId = "identifying_variable",
+                                                    label = "Uniquely identifying variable",
+                                                    choices = c("")),
+                                        selectInput(inputId = "comparison_plot_id",
+                                                  label = "Comparison plot ID",
+                                                  choices = c("")))
+                       ),
+      
       hr(),
       # Only show the plot button if data have been uploaded/downloaded
       conditionalPanel(condition = "input.variable != ''",
@@ -534,6 +557,9 @@ server <- function(input, output, session) {
                    updateSelectInput(session = session,
                                      inputId = "variable",
                                      choices = c("", variable_names[viable_variables]))
+                   updateSelectInput(session = session,
+                                     inputId = "identifying_variable",
+                                     choices = c("", variable_names))
                    
                    output$data_table <- renderDataTable(workspace$raw_data)
                    
@@ -550,6 +576,34 @@ server <- function(input, output, session) {
                                  inputId = "variable_name",
                                  value = input$variable)
                })
+  
+  #### When the uniquely identifying variable is updated, do this ####
+  observeEvent(eventExpr = input$identifying_variable,
+               handlerExpr = {
+                 if (input$identifying_variable == "") {
+                   updateSelectInput(session = session,
+                                     inputId = "comparison_plot_id",
+                                     choices = "")
+                 } else {
+                   if (length(unique(workspace$raw_data[[input$identifying_variable]])) == nrow(workspace$raw_data)) {
+                     updateSelectInput(session = session,
+                                       inputId = "comparison_plot_id",
+                                       choices = workspace$raw_data[[input$identifying_variable]])
+                   } else {
+                     uid_error <- paste0("The variable ", input$identifying_variable, " does not contain uniquely identifying keys. Please select a unique identifier.")
+                     showNotification(ui = uid_error,
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      id = "uid_error",
+                                      type = "error")
+                     updateSelectInput(session = session,
+                                       inputId = "comparison_plot_id",
+                                       choices = "")
+                   }
+                 }
+                 
+               })
+  
   
   #### When the identifying variables are updated, do this ####
   observeEvent(eventExpr = input$id_variables,
@@ -686,6 +740,22 @@ server <- function(input, output, session) {
                        theme(panel.grid = element_blank(),
                              panel.background = element_rect(fill = "gray95")) +
                        coord_flip()
+                     
+                     ## BUT!!!! WHAT IF WE'RE COMPARING VALUES ON THESE PLOTS????
+                     if (input$compare) {
+                       if (input$comparison_type == "manual") {
+                         comparison_vector <- input$manual_comparison_value
+                       } else if (input$comparison_type == "plot_id") {
+                         comparison_vector <- workspace$raw_data[[input$variable]][workspace$raw_data[[input$identifying_variable]] %in% input$comparison_plot_id]
+                       }
+                       
+                       workspace$quantile_plot <- workspace$quantile_plot +
+                         geom_hline(aes(yintercept = comparison_vector),
+                                    linetype = "dashed",
+                                    size = 1,
+                                    color = "black")
+                     }
+                     
                      
                      output$quantiles_plot <- renderPlot(workspace$quantile_plot)
                      
@@ -827,6 +897,21 @@ server <- function(input, output, session) {
                        theme(panel.grid = element_blank(),
                              panel.background = element_rect(fill = "gray95")) +
                        coord_flip()
+                     
+                     ## BUT!!!! WHAT IF WE'RE COMPARING VALUES ON THESE PLOTS????
+                     if (input$compare) {
+                       if (input$comparison_type == "manual") {
+                         comparison_vector <- input$manual_comparison_value
+                       } else if (input$comparison_type == "plot_id") {
+                         comparison_vector <- workspace$raw_data[[input$variable]][workspace$raw_data[[input$identifying_variable]] %in% input$comparison_plot_id]
+                       }
+                       
+                       workspace$benchmark_plot <- workspace$benchmark_plot +
+                         geom_hline(aes(yintercept = comparison_vector),
+                                    linetype = "dashed",
+                                    size = 1,
+                                    color = "black")
+                     }
                      
                      output$benchmark_plot <- renderPlot(workspace$benchmark_plot)
                      
