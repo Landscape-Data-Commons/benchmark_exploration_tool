@@ -675,8 +675,10 @@ server <- function(input, output, session) {
                                       binwidth = 1) +
                        scale_fill_manual(values = workspace$palette) +
                        geom_hline(yintercept = quantiles,
-                                  size = 1.5,
+                                  size = 1,
                                   color = "gray50") +
+                       scale_y_continuous(expand = c(0, 0)) +
+                       scale_x_continuous(expand = c(0, 0)) +
                        labs(x = "Count of data points",
                             y = input$variable_name) +
                        theme(panel.grid = element_blank(),
@@ -684,7 +686,7 @@ server <- function(input, output, session) {
                        coord_flip()
                      
                      output$quantiles_plot <- renderPlot(workspace$quantile_plot)
-                     # output$quantiles_plot <- renderPlotly(ggplotly(workspace$quantile_plot))
+                     
                      
                      ggsave(filename = paste0(workspace$temp_directory, "/fig1_quantile_plot.png"),
                             plot = workspace$quantile_plot,
@@ -815,6 +817,8 @@ server <- function(input, output, session) {
                                           fill = benchmark_results),
                                       binwidth = 1) +
                        scale_fill_manual(values = workspace$palette) +
+                       scale_y_continuous(expand = c(0, 0)) +
+                       scale_x_continuous(expand = c(0, 0)) +
                        labs(x = "Count of data points",
                             y = input$variable_name,
                             fill = "Benchmark status") +
@@ -823,7 +827,7 @@ server <- function(input, output, session) {
                        coord_flip()
                      
                      output$benchmark_plot <- renderPlot(workspace$benchmark_plot)
-                     # output$benchmark_plot <- renderPlotly(plotly::ggplotly(workspace$benchmark_plot))
+                     
                      
                      ggsave(filename = paste0(workspace$temp_directory, "/fig2_benchmark_plot.png"),
                             plot = workspace$benchmark_plot,
