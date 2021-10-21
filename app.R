@@ -597,6 +597,8 @@ server <- function(input, output, session) {
                    # Default to just 50%
                    workspace[["quantiles"]] <- c(0.5)
                  } else {
+                   removeNotification(id = "quantile_error_nonnumeric")
+                   
                    # Convert to proportion for quantile()
                    quantiles_vector <- quantiles_vector / 100
                    
