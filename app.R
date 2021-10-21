@@ -589,6 +589,7 @@ server <- function(input, output, session) {
                      updateSelectInput(session = session,
                                        inputId = "comparison_plot_id",
                                        choices = workspace$raw_data[[input$identifying_variable]])
+                     removeNotification(id = "uid_error")
                    } else {
                      uid_error <- paste0("The variable ", input$identifying_variable, " does not contain uniquely identifying keys. Please select a unique identifier.")
                      showNotification(ui = uid_error,
