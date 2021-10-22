@@ -99,6 +99,10 @@ ui <- fluidPage(
                 label = "Quantile break percentages, separated by commas",
                 value = "25, 50, 75"),
       
+      checkboxInput(inputId = "use_benchmarks",
+                    label = "Apply benchmarks (see Benchmark Ranges tab)",
+                    value = FALSE),
+      
       checkboxInput(inputId = "compare",
                     label = "Mark comparison value on figures",
                     value = FALSE),
@@ -158,10 +162,7 @@ ui <- fluidPage(
                            includeHTML("instructions.html")),
                   
                   tabPanel(title = "Benchmark ranges",
-                           checkboxInput(inputId = "use_benchmarks",
-                                         label = "Apply benchmarks",
-                                         value = FALSE),
-                           
+
                            conditionalPanel(condition = "input.use_benchmarks",
                                             selectInput(inputId = "range_count",
                                                         label = "Number of benchmark ranges",
