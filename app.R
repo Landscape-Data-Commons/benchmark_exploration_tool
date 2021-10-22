@@ -708,7 +708,7 @@ server <- function(input, output, session) {
                                   id = "plotting")
                  # Get a copy of the data to manipulate for plotting
                  plotting_data <- workspace$raw_data
-
+                 
                  
                  # Only plot if there's data!!!!
                  if (!is.null(plotting_data)){
@@ -765,7 +765,8 @@ server <- function(input, output, session) {
                        scale_x_continuous(expand = c(0, 0)) +
                        labs(x = "Count of data points",
                             y = input$variable_name) +
-                       theme(panel.grid = element_blank(),
+                       theme(panel.grid.major.x = element_blank(),
+                             panel.grid.minor.x = element_blank(),
                              panel.background = element_rect(fill = "gray95")) +
                        coord_flip()
                      
@@ -959,7 +960,8 @@ server <- function(input, output, session) {
                        labs(x = "Count of data points",
                             y = input$variable_name,
                             fill = "Benchmark status") +
-                       theme(panel.grid = element_blank(),
+                       theme(panel.grid.major.x = element_blank(),
+                             panel.grid.minor.x = element_blank(),
                              panel.background = element_rect(fill = "gray95")) +
                        coord_flip()
                      
