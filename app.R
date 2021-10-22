@@ -454,7 +454,7 @@ server <- function(input, output, session) {
                    query_results_list <- lapply(X = ecosite_id_vector,
                                                 FUN = function(X){
                                                   # Build the query
-                                                  query <- paste0("http://api.landscapedatacommons.org/api/",
+                                                  query <- paste0("https://api.landscapedatacommons.org/api/",
                                                                   "geoindicators?",
                                                                   "EcologicalSiteId=",
                                                                   X)
