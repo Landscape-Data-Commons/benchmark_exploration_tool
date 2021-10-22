@@ -817,11 +817,18 @@ server <- function(input, output, session) {
                                                          round(comparison_vector,
                                                                digits = 1),
                                                          ".")
-                     } else if (length(comparison_vector) > 1) {
+                     } else if (length(comparison_vector) == 2) {
+                       comparison_vector_string <- paste(round(comparison_vector,
+                                                               digits = 1),
+                                                         collapse = " and ")
+                       comparison_caption_text <- paste0("The black dashed lines mark the values ",
+                                                         comparison_vector_string,
+                                                         ".")
+                     } else if (length(comparison_vector) > 2) {
                        comparison_vector_string <- stringr::str_replace(paste(round(comparison_vector,
                                                                                     digits = 1),
                                                                               collapse = ", "),
-                                                                        pattern = ", (?=\\d{1,100}\\.\\d{0,1}$)",
+                                                                        pattern = ", (?=\\d{1,100}\\.{0,1}\\d{0,1}$)",
                                                                         replacement = ", and ")
                        comparison_caption_text <- paste0("The black dashed lines mark the values ",
                                                          comparison_vector_string,
