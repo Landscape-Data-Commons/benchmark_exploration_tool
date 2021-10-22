@@ -776,6 +776,11 @@ server <- function(input, output, session) {
                          comparison_vector <- workspace$raw_data[[input$variable]][workspace$raw_data[[input$identifying_variable]] %in% input$comparison_plot_id]
                        }
                        
+                       message("Adding comparison values to quantile plot:")
+                       message(paste(round(comparison_vector,
+                                           digits = 1),
+                                     collapse = ", "))
+                       
                        workspace$quantile_plot <- workspace$quantile_plot +
                          geom_hline(aes(yintercept = comparison_vector),
                                     linetype = "dashed",
@@ -803,7 +808,38 @@ server <- function(input, output, session) {
                                                                  collapse = ", "),
                                                           ", and 100% of data points have a value <= ", round(max(current_data_vector, na.rm = TRUE), digits = 1)))
                    
-                   output$quantile_breaks <- renderText(quantile_plot_caption)
+                   # Okay, but we also need the captions to reflect the comparison values if they were requested!
+                   if (input$compare) {
+                     if (length(comparison_vector) == 1) {
+                       comparison_caption_text <- paste0("The black dashed line marks the value ",
+                                                         round(comparison_vector,
+                                                               digits = 1),
+                                                         ".")
+                     } else if (length(comparison_vector) > 1) {
+                       comparison_vector_string <- stringr::str_replace(paste(round(comparison_vector,
+                                                                                    digits = 1),
+                                                                              collapse = ", "),
+                                                                        pattern = ", (?=\\d{1,100}\\.\\d{0,1}$)",
+                                                                        replacement = ", and ")
+                       comparison_caption_text <- paste0("The black dashed lines mark the values ",
+                                                         comparison_vector_string,
+                                                         ".")
+                     } else {
+                       comparison_caption_text <- NULL
+                     }
+                     
+                     if (!is.null(comparison_caption_text)) {
+                       quantile_plot_caption <- paste(quantile_plot_caption,
+                                                      comparison_caption_text)
+                     }
+                   } else {
+                     comparison_caption_text <- NULL
+                   }
+                   
+                   message(paste0("Quantiles plot caption is: ",
+                                  quantile_plot_caption))
+                   
+                   output$quantile_caption <- renderText(quantile_plot_caption)
                    
                    ##### Do the benchmarking ####
                    if (input$use_benchmarks) {
@@ -961,6 +997,11 @@ server <- function(input, output, session) {
                                                       " data points classified into benchmark categories. ",
                                                       "Of the ", sum(benchmark_results_summary), " data points, ",
                                                       category_statements, ".")
+                     
+                     if (!is.null(comparison_caption_text)) {
+                       benchmark_plot_caption <- paste(benchmark_plot_caption,
+                                                       comparison_caption_text)
+                     }
                      
                      output$benchmark_summary <- renderText(benchmark_plot_caption)
                      
