@@ -61,8 +61,8 @@ ui <- fluidPage(
   # Application title
   titlePanel(img(src = "combined_logos.png",
                  align = "right"),
-             windowTitle = "Plotting Indicator Values and Benchmarks"),
-  titlePanel(title = "Plotting Indicator Values and Benchmarks"),
+             windowTitle = "Benchmark Exploration Tool"),
+  titlePanel(title = "Benchmark Exploration Tool"),
   
   
   # Sidebar with a slider input for number of bins 
