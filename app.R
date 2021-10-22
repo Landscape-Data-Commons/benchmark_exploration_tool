@@ -97,7 +97,7 @@ ui <- fluidPage(
       checkboxInput(inputId = "compare",
                     label = "Mark comparison value on figures",
                     value = FALSE),
-
+      
       conditionalPanel(condition = "input.compare",
                        radioButtons(inputId = "comparison_type",
                                     label = "Comparison value source",
@@ -365,7 +365,7 @@ ui <- fluidPage(
                                                                                        value = "")),
                                                                       hr()
                                                              ))
-                                            ),
+                           ),
                            
                   ),
                   
@@ -401,7 +401,7 @@ server <- function(input, output, session) {
                                           "#75c6c5ff",
                                           "#fd6794ff"))
   
-    # Nor are there plots
+  # Nor are there plots
   output$plot_files <- renderText("FALSE")
   
   #### When a CSV is uploaded, do this ####
@@ -680,12 +680,11 @@ server <- function(input, output, session) {
                  showNotification(ui = "Drawing plots. Please wait.",
                                   duration = NULL,
                                   closeButton = FALSE,
+                                  type = "message",
                                   id = "plotting")
                  # Get a copy of the data to manipulate for plotting
                  plotting_data <- workspace$raw_data
-                 
-                 message("plotting_data row one is:")
-                 message(plotting_data[1,])
+
                  
                  # Only plot if there's data!!!!
                  if (!is.null(plotting_data)){
@@ -727,6 +726,8 @@ server <- function(input, output, session) {
                    
                    # Make the dang plot happen!
                    if (nrow(plotting_data) > 0) {
+                     message("Plotting the quantiles plot")
+                     
                      workspace$quantile_plot <- ggplot() +
                        geom_histogram(data = plotting_data,
                                       aes(y = current_variable,
@@ -759,10 +760,10 @@ server <- function(input, output, session) {
                                     color = "black")
                      }
                      
-                     
+                     message("Rendering quantiles plot")
                      output$quantiles_plot <- renderPlot(workspace$quantile_plot)
                      
-                     
+                     message("Saving quantiles plot")
                      ggsave(filename = paste0(workspace$temp_directory, "/fig1_quantile_plot.png"),
                             plot = workspace$quantile_plot,
                             device = "png",
@@ -982,7 +983,7 @@ server <- function(input, output, session) {
                    updateTabsetPanel(session,
                                      inputId = "maintabs",
                                      selected = "Results") 
-
+                   
                    message(paste0("Setting work directory to ",
                                   workspace$temp_directory))
                    setwd(workspace$temp_directory)
@@ -1002,7 +1003,7 @@ server <- function(input, output, session) {
                    message(paste0(files_to_zip,
                                   collapse = ", "))
                    
-
+                   
                    switch(Sys.info()[["sysname"]],
                           Windows = {
                             system(paste0("cmd.exe /c \"C:\\Program Files\\7-Zip\\7z\".exe a -tzip plots.zip ",
@@ -1021,6 +1022,7 @@ server <- function(input, output, session) {
                    }
                    setwd(workspace$original_directory)
                  }
+                 
                  removeNotification(id = "plotting")
                })
   
