@@ -117,10 +117,25 @@ ui <- fluidPage(
                                                     label = "Uniquely identifying variable",
                                                     choices = c("")),
                                         selectInput(inputId = "comparison_plot_id",
-                                                  label = "Comparison unique ID(s)",
-                                                  multiple = TRUE,
-                                                  choices = c("")))
-                       ),
+                                                    label = "Comparison unique ID(s)",
+                                                    multiple = TRUE,
+                                                    choices = c("")))
+      ),
+      
+      checkboxInput(inputId = "time_series",
+                    label = "Plot yearly time series",
+                    value = FALSE),
+      conditionalPanel(condition = "input.time_series",
+                       selectInput(inputId = "date_variable",
+                                   label = "Date variable",
+                                   choices = c("")),
+                       radioButtons(inputId = "date_type",
+                                    label = "The date format is:",
+                                    choices = c("2020-10-30" = "iso8601",
+                                                "October 30, 2020" = "month_day_year",
+                                                "2020" = "year"))
+                       
+      ),
       
       hr(),
       # Only show the plot button if data have been uploaded/downloaded
@@ -376,11 +391,11 @@ ui <- fluidPage(
                   
                   tabPanel(title = "Results",
                            plotOutput("quantiles_plot"),
-                           # plotlyOutput("quantiles_plot"),
-                           textOutput("quantile_breaks"),
+                           textOutput("quantile_caption"),
                            plotOutput("benchmark_plot"),
-                           # plotlyOutput("benchmark_plot"),
-                           textOutput("benchmark_summary")),
+                           textOutput("benchmark_summary"),
+                           plotOutput("timeseries_plot"),
+                           textOutput("timeseries_summary")),
                   tabPanel(title = "Data",
                            dataTableOutput("data_table")))
       
@@ -565,6 +580,9 @@ server <- function(input, output, session) {
                                      choices = c("", variable_names[viable_variables]))
                    updateSelectInput(session = session,
                                      inputId = "identifying_variable",
+                                     choices = c("", variable_names))
+                   updateSelectInput(session = session,
+                                     inputId = "date_variable",
                                      choices = c("", variable_names))
                    
                    output$data_table <- renderDataTable(workspace$raw_data)
@@ -985,6 +1003,103 @@ server <- function(input, output, session) {
                      output$benchmark_summary <- NULL
                    }
                    
+                   ## Do the time series plot!
+                   if (input$time_series) {
+                     message("Plotting time series!")
+                     timeseries_plotting_data <- workspace$raw_data
+                     timeseries_plotting_data$value <- timeseries_plotting_data[[input$variable]]
+                     
+                     if (input$date_type == "iso8601") {
+                       year_vector <- stringr::str_extract(timeseries_plotting_data[[input$date_variable]],
+                                                           pattern = "^\\d{4}")
+                       if (any(is.na(year_vector))) {
+                         showNotification(ui = "Unable to extract years from the date variable for some or all observations. Please make sure that the date is formatted as YYYY-MM-DD in accordance with the ISO8601 standard, e.g., '2020-10-30', and that all data have dates.",
+                                          duration = NULL,
+                                          closeButton = TRUE,
+                                          type = "warning",
+                                          id = "year_error_iso8601")
+                       }
+                       
+                       timeseries_plotting_data$year <- year_vector
+                       
+                     } else if (input$date_type == "month_day_year") {
+                       year_vector <- stringr::str_extract(timeseries_plotting_data[[input$date_variable]],
+                                                           pattern = "\\d{4}$")
+                       if (any(is.na(year_vector))) {
+                         showNotification(ui = "Unable to extract years from the date variable for some or all observations. Please make sure that the date is formatted as 'Month Day, Year', e.g., 'October 30, 2020', and that all data have dates.",
+                                          duration = NULL,
+                                          closeButton = TRUE,
+                                          type = "warning",
+                                          id = "year_error_monthdayyear")
+                       }
+                       
+                       timeseries_plotting_data$year <- year_vector
+                       
+                     } else {
+                       # If the variable is just years, roll with it
+                       timeseries_plotting_data$year <- timeseries_plotting_data[[input$date_variable]]
+                     }
+                     
+                     # MAKE SURE TO PUT YEARS IN ASCENDING ORDER WITH "ALL YEARS" AT THE END
+                     years_vector_numeric <- as.numeric(unique(timeseries_plotting_data$year))
+                     years_vector_numeric <- years_vector_numeric[order(years_vector_numeric,
+                                                                        decreasing = FALSE)]
+                     years_levels <- c(years_vector_numeric, "All years")
+                     
+                     # Bind on the data again, but with "All years" in the year variable for all observations
+                     timeseries_duplicate_data <- timeseries_plotting_data
+                     timeseries_duplicate_data$year <- "All years"
+                     timeseries_plotting_data <- rbind(timeseries_plotting_data,
+                                                       timeseries_duplicate_data)
+                     
+                     # Use the levels vector to set the factor order
+                     timeseries_plotting_data$year <- factor(timeseries_plotting_data$year,
+                                                             levels = years_levels)
+                     
+                     # Plot the figure
+                     workspace$timeseries_plot <- ggplot() +
+                       geom_boxplot(data = timeseries_plotting_data,
+                                    aes(x = year,
+                                        y = value)) +
+                       labs(y = input$variable_name,
+                            x = "Year") +
+                       theme(panel.grid.minor.x = element_blank(),
+                             panel.grid.major.x = element_blank(),
+                             panel.background = element_rect(fill = "gray95"))
+                     
+                     # Render the figure
+                     output$timeseries_plot <- renderPlot(workspace$timeseries_plot)
+                     
+                     # Write out the figure
+                     ggsave(filename = paste0(workspace$temp_directory, "/fig3_timeseries_plot.png"),
+                            plot = workspace$timeseries_plot,
+                            device = "png",
+                            width = 9,
+                            height = 4,
+                            units = "in")
+                     
+                     # Make the caption
+                     timeseries_plot_caption <- "Figure 3: Distribution of indicator values by year."
+                     output$timeseries_summary <- renderText(timeseries_plot_caption)
+                     
+                   } else {
+                     message("No time series!")
+                     message("Attempting to delete fig3_timeseries_plot.png")
+                     if (file.exists(paste0(workspace$temp_directory, "/fig3_timeseries_plot.png"))) {
+                       file.remove(paste0(workspace$temp_directory, "/fig3_timeseries_plot.png"))
+                     }
+                     if (file.exists(paste0(workspace$temp_directory, "/fig3_timeseries_plot.png"))) {
+                       message("fig3_timeseries_plot.png does exists. :(")
+                     } else {
+                       message("fig3_timeseries_plot.png does not exist. :D")
+                     }
+                     
+                     output$timeseries_plot <- NULL
+                     timeseries_plot_caption <- NULL
+                     output$timeseries_summary <- NULL
+                   }
+                   
+                   
                    updateTabsetPanel(session,
                                      inputId = "maintabs",
                                      selected = "Results") 
@@ -996,6 +1111,7 @@ server <- function(input, output, session) {
                    # Write out the captions as a text file for downloading
                    writeLines(text = paste(quantile_plot_caption,
                                            benchmark_plot_caption,
+                                           timeseries_plot_caption,
                                            sep = "\n\n"),
                               con = "captions.txt")
                    
