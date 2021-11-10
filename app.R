@@ -61,24 +61,29 @@ ui <- fluidPage(
   # Application title
   titlePanel(img(src = "combined_logos.png",
                  align = "right"),
-             windowTitle = "Plotting Indicator Values and Benchmarks"),
-  titlePanel(title = "Plotting Indicator Values and Benchmarks"),
+             windowTitle = "Benchmark Exploration Tool"),
+  titlePanel(title = "Benchmark Exploration Tool"),
   
   
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
     sidebarPanel(
-      fileInput(inputId = "raw_data",
-                label = "Exported TerrADat CSV",
-                multiple = FALSE,
-                accept = "CSV"),
-      helpText("OR"),
-      textInput(inputId = "ecosite_id",
-                label = "Ecological Site ID",
-                value = "",
-                placeholder = "R042XB012NM"),
-      actionButton(inputId = "fetch_data",
-                   label = "Fetch data from the Landscape Data Commons"),
+      radioButtons(inputId = "data_source",
+                   label = "Data source",
+                   choices = c("Upload" = "upload", "Query Landscape Data Commons" = "ldc")),
+      conditionalPanel(condition = "input.data_source == 'upload'",
+                       fileInput(inputId = "raw_data",
+                                 label = "Exported TerrADat CSV",
+                                 multiple = FALSE,
+                                 accept = "CSV")),
+      conditionalPanel(condition = "input.data_source == 'ldc'",
+                       textInput(inputId = "ecosite_id",
+                                 label = "Ecological Site ID",
+                                 value = "",
+                                 placeholder = "R042XB012NM"),
+                       actionButton(inputId = "fetch_data",
+                                    label = "Fetch data from the Landscape Data Commons")),
+      
       hr(),
       selectInput(inputId = "id_variables",
                   label = "Variable(s) with identifying, non-indicator information",
@@ -93,6 +98,49 @@ ui <- fluidPage(
       textInput(inputId = "quantiles",
                 label = "Quantile break percentages, separated by commas",
                 value = "25, 50, 75"),
+      
+      checkboxInput(inputId = "use_benchmarks",
+                    label = "Apply benchmarks (see Benchmark Ranges tab)",
+                    value = FALSE),
+      
+      checkboxInput(inputId = "compare",
+                    label = "Mark comparison value on figures",
+                    value = FALSE),
+      
+      conditionalPanel(condition = "input.compare",
+                       radioButtons(inputId = "comparison_type",
+                                    label = "Comparison value source",
+                                    choices = c("Manual" = "manual", "From current data" = "plot_id"),
+                                    selected = "manual"),
+                       conditionalPanel(condition = "input.comparison_type == 'manual'",
+                                        numericInput(inputId = "manual_comparison_value",
+                                                     label = "Indicator value",
+                                                     value = 0)),
+                       conditionalPanel(condition = "input.comparison_type == 'plot_id'",
+                                        selectInput(inputId = "identifying_variable",
+                                                    label = "Uniquely identifying variable",
+                                                    choices = c("")),
+                                        selectInput(inputId = "comparison_plot_id",
+                                                    label = "Comparison unique ID(s)",
+                                                    multiple = TRUE,
+                                                    choices = c("")))
+      ),
+      
+      checkboxInput(inputId = "time_series",
+                    label = "Plot yearly time series",
+                    value = FALSE),
+      conditionalPanel(condition = "input.time_series",
+                       selectInput(inputId = "date_variable",
+                                   label = "Date variable",
+                                   choices = c("")),
+                       radioButtons(inputId = "date_type",
+                                    label = "The date format is:",
+                                    choices = c("2020-10-30" = "iso8601",
+                                                "October 30, 2020" = "month_day_year",
+                                                "2020" = "year"))
+                       
+      ),
+      
       hr(),
       # Only show the plot button if data have been uploaded/downloaded
       conditionalPanel(condition = "input.variable != ''",
@@ -114,10 +162,7 @@ ui <- fluidPage(
                            includeHTML("instructions.html")),
                   
                   tabPanel(title = "Benchmark ranges",
-                           checkboxInput(inputId = "use_benchmarks",
-                                         label = "Apply benchmarks",
-                                         value = FALSE),
-                           
+
                            conditionalPanel(condition = "input.use_benchmarks",
                                             selectInput(inputId = "range_count",
                                                         label = "Number of benchmark ranges",
@@ -341,19 +386,19 @@ ui <- fluidPage(
                                                                                        value = "")),
                                                                       hr()
                                                              ))
-                                            ),
+                           ),
                            
                   ),
                   
                   tabPanel(title = "Results",
                            plotOutput("quantiles_plot"),
-                           # plotlyOutput("quantiles_plot"),
-                           textOutput("quantile_breaks"),
+                           textOutput("quantile_caption"),
                            plotOutput("benchmark_plot"),
-                           # plotlyOutput("benchmark_plot"),
-                           textOutput("benchmark_summary")),
+                           textOutput("benchmark_summary"),
+                           plotOutput("timeseries_plot"),
+                           textOutput("timeseries_summary")),
                   tabPanel(title = "Data",
-                           tableOutput("data_table")))
+                           dataTableOutput("data_table")))
       
     )
   )
@@ -377,7 +422,7 @@ server <- function(input, output, session) {
                                           "#75c6c5ff",
                                           "#fd6794ff"))
   
-    # Nor are there plots
+  # Nor are there plots
   output$plot_files <- renderText("FALSE")
   
   #### When a CSV is uploaded, do this ####
@@ -410,7 +455,7 @@ server <- function(input, output, session) {
                    query_results_list <- lapply(X = ecosite_id_vector,
                                                 FUN = function(X){
                                                   # Build the query
-                                                  query <- paste0("http://api.landscapedatacommons.org/api/",
+                                                  query <- paste0("https://api.landscapedatacommons.org/api/",
                                                                   "geoindicators?",
                                                                   "EcologicalSiteId=",
                                                                   X)
@@ -511,7 +556,7 @@ server <- function(input, output, session) {
                  removeNotification(id = "downloading")
                })
   
-  #### When a CSV is read in, do this ####
+  #### Raw data are updated, do this ####
   observeEvent(eventExpr = workspace$raw_data,
                handlerExpr = {
                  if (!is.null(workspace$raw_data)) {
@@ -534,8 +579,14 @@ server <- function(input, output, session) {
                    updateSelectInput(session = session,
                                      inputId = "variable",
                                      choices = c("", variable_names[viable_variables]))
+                   updateSelectInput(session = session,
+                                     inputId = "identifying_variable",
+                                     choices = c("", variable_names))
+                   updateSelectInput(session = session,
+                                     inputId = "date_variable",
+                                     choices = c("", variable_names))
                    
-                   output$data_table <- renderTable(workspace$raw_data)
+                   output$data_table <- renderDataTable(workspace$raw_data)
                    
                    updateTabsetPanel(session = session,
                                      inputId = "maintabs",
@@ -550,6 +601,35 @@ server <- function(input, output, session) {
                                  inputId = "variable_name",
                                  value = input$variable)
                })
+  
+  #### When the uniquely identifying variable is updated, do this ####
+  observeEvent(eventExpr = input$identifying_variable,
+               handlerExpr = {
+                 if (input$identifying_variable == "") {
+                   updateSelectInput(session = session,
+                                     inputId = "comparison_plot_id",
+                                     choices = "")
+                 } else {
+                   if (length(unique(workspace$raw_data[[input$identifying_variable]])) == nrow(workspace$raw_data)) {
+                     updateSelectInput(session = session,
+                                       inputId = "comparison_plot_id",
+                                       choices = workspace$raw_data[[input$identifying_variable]])
+                     removeNotification(id = "uid_error")
+                   } else {
+                     uid_error <- paste0("The variable ", input$identifying_variable, " does not contain uniquely identifying keys. Please select a unique identifier.")
+                     showNotification(ui = uid_error,
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      id = "uid_error",
+                                      type = "error")
+                     updateSelectInput(session = session,
+                                       inputId = "comparison_plot_id",
+                                       choices = "")
+                   }
+                 }
+                 
+               })
+  
   
   #### When the identifying variables are updated, do this ####
   observeEvent(eventExpr = input$id_variables,
@@ -597,6 +677,8 @@ server <- function(input, output, session) {
                    # Default to just 50%
                    workspace[["quantiles"]] <- c(0.5)
                  } else {
+                   removeNotification(id = "quantile_error_nonnumeric")
+                   
                    # Convert to proportion for quantile()
                    quantiles_vector <- quantiles_vector / 100
                    
@@ -622,12 +704,11 @@ server <- function(input, output, session) {
                  showNotification(ui = "Drawing plots. Please wait.",
                                   duration = NULL,
                                   closeButton = FALSE,
+                                  type = "message",
                                   id = "plotting")
                  # Get a copy of the data to manipulate for plotting
                  plotting_data <- workspace$raw_data
                  
-                 message("plotting_data row one is:")
-                 message(plotting_data[1,])
                  
                  # Only plot if there's data!!!!
                  if (!is.null(plotting_data)){
@@ -669,23 +750,50 @@ server <- function(input, output, session) {
                    
                    # Make the dang plot happen!
                    if (nrow(plotting_data) > 0) {
-                     workspace$quantile_plot <- ggplot(data = plotting_data) +
-                       geom_histogram(aes(y = current_variable,
+                     message("Plotting the quantiles plot")
+                     
+                     workspace$quantile_plot <- ggplot() +
+                       geom_histogram(data = plotting_data,
+                                      aes(y = current_variable,
                                           fill = Quantile),
                                       binwidth = 1) +
                        scale_fill_manual(values = workspace$palette) +
                        geom_hline(yintercept = quantiles,
-                                  size = 1.5,
+                                  size = 1,
                                   color = "gray50") +
+                       scale_y_continuous(expand = c(0, 0)) +
+                       scale_x_continuous(expand = c(0, 0)) +
                        labs(x = "Count of data points",
                             y = input$variable_name) +
-                       theme(panel.grid = element_blank(),
+                       theme(panel.grid.major.x = element_blank(),
+                             panel.grid.minor.x = element_blank(),
                              panel.background = element_rect(fill = "gray95")) +
                        coord_flip()
                      
-                     output$quantiles_plot <- renderPlot(workspace$quantile_plot)
-                     # output$quantiles_plot <- renderPlotly(ggplotly(workspace$quantile_plot))
+                     ## BUT!!!! WHAT IF WE'RE COMPARING VALUES ON THESE PLOTS????
+                     if (input$compare) {
+                       if (input$comparison_type == "manual") {
+                         comparison_vector <- input$manual_comparison_value
+                       } else if (input$comparison_type == "plot_id") {
+                         comparison_vector <- workspace$raw_data[[input$variable]][workspace$raw_data[[input$identifying_variable]] %in% input$comparison_plot_id]
+                       }
+                       
+                       message("Adding comparison values to quantile plot:")
+                       message(paste(round(comparison_vector,
+                                           digits = 1),
+                                     collapse = ", "))
+                       
+                       workspace$quantile_plot <- workspace$quantile_plot +
+                         geom_hline(aes(yintercept = comparison_vector),
+                                    linetype = "dashed",
+                                    size = 1,
+                                    color = "black")
+                     }
                      
+                     message("Rendering quantiles plot")
+                     output$quantiles_plot <- renderPlot(workspace$quantile_plot)
+                     
+                     message("Saving quantiles plot")
                      ggsave(filename = paste0(workspace$temp_directory, "/fig1_quantile_plot.png"),
                             plot = workspace$quantile_plot,
                             device = "png",
@@ -702,7 +810,45 @@ server <- function(input, output, session) {
                                                                  collapse = ", "),
                                                           ", and 100% of data points have a value <= ", round(max(current_data_vector, na.rm = TRUE), digits = 1)))
                    
-                   output$quantile_breaks <- renderText(quantile_plot_caption)
+                   # Okay, but we also need the captions to reflect the comparison values if they were requested!
+                   if (input$compare) {
+                     if (length(comparison_vector) == 1) {
+                       comparison_caption_text <- paste0("The black dashed line marks the value ",
+                                                         round(comparison_vector,
+                                                               digits = 1),
+                                                         ".")
+                     } else if (length(comparison_vector) == 2) {
+                       comparison_vector_string <- paste(round(comparison_vector,
+                                                               digits = 1),
+                                                         collapse = " and ")
+                       comparison_caption_text <- paste0("The black dashed lines mark the values ",
+                                                         comparison_vector_string,
+                                                         ".")
+                     } else if (length(comparison_vector) > 2) {
+                       comparison_vector_string <- stringr::str_replace(paste(round(comparison_vector,
+                                                                                    digits = 1),
+                                                                              collapse = ", "),
+                                                                        pattern = ", (?=\\d{1,100}\\.{0,1}\\d{0,1}$)",
+                                                                        replacement = ", and ")
+                       comparison_caption_text <- paste0("The black dashed lines mark the values ",
+                                                         comparison_vector_string,
+                                                         ".")
+                     } else {
+                       comparison_caption_text <- NULL
+                     }
+                     
+                     if (!is.null(comparison_caption_text)) {
+                       quantile_plot_caption <- paste(quantile_plot_caption,
+                                                      comparison_caption_text)
+                     }
+                   } else {
+                     comparison_caption_text <- NULL
+                   }
+                   
+                   message(paste0("Quantiles plot caption is: ",
+                                  quantile_plot_caption))
+                   
+                   output$quantile_caption <- renderText(quantile_plot_caption)
                    
                    ##### Do the benchmarking ####
                    if (input$use_benchmarks) {
@@ -810,20 +956,39 @@ server <- function(input, output, session) {
                                                   digits = 1)
                      
                      # Plot the histogram with benchmark info!
-                     workspace$benchmark_plot <- ggplot(data = plotting_data) +
-                       geom_histogram(aes(y = current_variable,
+                     workspace$benchmark_plot <- ggplot() +
+                       geom_histogram(data = plotting_data,
+                                      aes(y = current_variable,
                                           fill = benchmark_results),
                                       binwidth = 1) +
                        scale_fill_manual(values = workspace$palette) +
+                       scale_y_continuous(expand = c(0, 0)) +
+                       scale_x_continuous(expand = c(0, 0)) +
                        labs(x = "Count of data points",
                             y = input$variable_name,
                             fill = "Benchmark status") +
-                       theme(panel.grid = element_blank(),
+                       theme(panel.grid.major.x = element_blank(),
+                             panel.grid.minor.x = element_blank(),
                              panel.background = element_rect(fill = "gray95")) +
                        coord_flip()
                      
+                     ## BUT!!!! WHAT IF WE'RE COMPARING VALUES ON THESE PLOTS????
+                     if (input$compare) {
+                       if (input$comparison_type == "manual") {
+                         comparison_vector <- input$manual_comparison_value
+                       } else if (input$comparison_type == "plot_id") {
+                         comparison_vector <- workspace$raw_data[[input$variable]][workspace$raw_data[[input$identifying_variable]] %in% input$comparison_plot_id]
+                       }
+                       
+                       workspace$benchmark_plot <- workspace$benchmark_plot +
+                         geom_hline(aes(yintercept = comparison_vector),
+                                    linetype = "dashed",
+                                    size = 1,
+                                    color = "black")
+                     }
+                     
                      output$benchmark_plot <- renderPlot(workspace$benchmark_plot)
-                     # output$benchmark_plot <- renderPlotly(plotly::ggplotly(workspace$benchmark_plot))
+                     
                      
                      ggsave(filename = paste0(workspace$temp_directory, "/fig2_benchmark_plot.png"),
                             plot = workspace$benchmark_plot,
@@ -842,6 +1007,11 @@ server <- function(input, output, session) {
                                                       " data points classified into benchmark categories. ",
                                                       "Of the ", sum(benchmark_results_summary), " data points, ",
                                                       category_statements, ".")
+                     
+                     if (!is.null(comparison_caption_text)) {
+                       benchmark_plot_caption <- paste(benchmark_plot_caption,
+                                                       comparison_caption_text)
+                     }
                      
                      output$benchmark_summary <- renderText(benchmark_plot_caption)
                      
@@ -884,10 +1054,107 @@ server <- function(input, output, session) {
                      output$benchmark_summary <- NULL
                    }
                    
+                   ## Do the time series plot!
+                   if (input$time_series) {
+                     message("Plotting time series!")
+                     timeseries_plotting_data <- workspace$raw_data
+                     timeseries_plotting_data$value <- timeseries_plotting_data[[input$variable]]
+                     
+                     if (input$date_type == "iso8601") {
+                       year_vector <- stringr::str_extract(timeseries_plotting_data[[input$date_variable]],
+                                                           pattern = "^\\d{4}")
+                       if (any(is.na(year_vector))) {
+                         showNotification(ui = "Unable to extract years from the date variable for some or all observations. Please make sure that the date is formatted as YYYY-MM-DD in accordance with the ISO8601 standard, e.g., '2020-10-30', and that all data have dates.",
+                                          duration = NULL,
+                                          closeButton = TRUE,
+                                          type = "warning",
+                                          id = "year_error_iso8601")
+                       }
+                       
+                       timeseries_plotting_data$year <- year_vector
+                       
+                     } else if (input$date_type == "month_day_year") {
+                       year_vector <- stringr::str_extract(timeseries_plotting_data[[input$date_variable]],
+                                                           pattern = "\\d{4}$")
+                       if (any(is.na(year_vector))) {
+                         showNotification(ui = "Unable to extract years from the date variable for some or all observations. Please make sure that the date is formatted as 'Month Day, Year', e.g., 'October 30, 2020', and that all data have dates.",
+                                          duration = NULL,
+                                          closeButton = TRUE,
+                                          type = "warning",
+                                          id = "year_error_monthdayyear")
+                       }
+                       
+                       timeseries_plotting_data$year <- year_vector
+                       
+                     } else {
+                       # If the variable is just years, roll with it
+                       timeseries_plotting_data$year <- timeseries_plotting_data[[input$date_variable]]
+                     }
+                     
+                     # MAKE SURE TO PUT YEARS IN ASCENDING ORDER WITH "ALL YEARS" AT THE END
+                     years_vector_numeric <- as.numeric(unique(timeseries_plotting_data$year))
+                     years_vector_numeric <- years_vector_numeric[order(years_vector_numeric,
+                                                                        decreasing = FALSE)]
+                     years_levels <- c(years_vector_numeric, "All years")
+                     
+                     # Bind on the data again, but with "All years" in the year variable for all observations
+                     timeseries_duplicate_data <- timeseries_plotting_data
+                     timeseries_duplicate_data$year <- "All years"
+                     timeseries_plotting_data <- rbind(timeseries_plotting_data,
+                                                       timeseries_duplicate_data)
+                     
+                     # Use the levels vector to set the factor order
+                     timeseries_plotting_data$year <- factor(timeseries_plotting_data$year,
+                                                             levels = years_levels)
+                     
+                     # Plot the figure
+                     workspace$timeseries_plot <- ggplot() +
+                       geom_boxplot(data = timeseries_plotting_data,
+                                    aes(x = year,
+                                        y = value)) +
+                       labs(y = input$variable_name,
+                            x = "Year") +
+                       theme(panel.grid.minor.x = element_blank(),
+                             panel.grid.major.x = element_blank(),
+                             panel.background = element_rect(fill = "gray95"))
+                     
+                     # Render the figure
+                     output$timeseries_plot <- renderPlot(workspace$timeseries_plot)
+                     
+                     # Write out the figure
+                     ggsave(filename = paste0(workspace$temp_directory, "/fig3_timeseries_plot.png"),
+                            plot = workspace$timeseries_plot,
+                            device = "png",
+                            width = 9,
+                            height = 4,
+                            units = "in")
+                     
+                     # Make the caption
+                     timeseries_plot_caption <- "Figure 3: Distribution of indicator values by year."
+                     output$timeseries_summary <- renderText(timeseries_plot_caption)
+                     
+                   } else {
+                     message("No time series!")
+                     message("Attempting to delete fig3_timeseries_plot.png")
+                     if (file.exists(paste0(workspace$temp_directory, "/fig3_timeseries_plot.png"))) {
+                       file.remove(paste0(workspace$temp_directory, "/fig3_timeseries_plot.png"))
+                     }
+                     if (file.exists(paste0(workspace$temp_directory, "/fig3_timeseries_plot.png"))) {
+                       message("fig3_timeseries_plot.png does exists. :(")
+                     } else {
+                       message("fig3_timeseries_plot.png does not exist. :D")
+                     }
+                     
+                     output$timeseries_plot <- NULL
+                     timeseries_plot_caption <- NULL
+                     output$timeseries_summary <- NULL
+                   }
+                   
+                   
                    updateTabsetPanel(session,
                                      inputId = "maintabs",
                                      selected = "Results") 
-
+                   
                    message(paste0("Setting work directory to ",
                                   workspace$temp_directory))
                    setwd(workspace$temp_directory)
@@ -895,6 +1162,7 @@ server <- function(input, output, session) {
                    # Write out the captions as a text file for downloading
                    writeLines(text = paste(quantile_plot_caption,
                                            benchmark_plot_caption,
+                                           timeseries_plot_caption,
                                            sep = "\n\n"),
                               con = "captions.txt")
                    
@@ -907,7 +1175,7 @@ server <- function(input, output, session) {
                    message(paste0(files_to_zip,
                                   collapse = ", "))
                    
-
+                   
                    switch(Sys.info()[["sysname"]],
                           Windows = {
                             system(paste0("cmd.exe /c \"C:\\Program Files\\7-Zip\\7z\".exe a -tzip plots.zip ",
@@ -926,6 +1194,7 @@ server <- function(input, output, session) {
                    }
                    setwd(workspace$original_directory)
                  }
+                 
                  removeNotification(id = "plotting")
                })
   
