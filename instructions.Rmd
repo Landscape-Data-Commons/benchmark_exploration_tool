@@ -21,7 +21,15 @@ By default, the x-axis label will be the same as the variable name. It may make 
 ### 5) Decide your quantile break percentages
 The histogram will be broken into quantiles according to these percentages, visualized as a histogram with color and vertical lines representing the breakpoints. As an example, entering "33, 67" will result in showing the value for the variable below which 33% percent of observations fall and the value of the variable below which 67% of the observations fall. The percentages entered must be numbers between 0 and 100 separated by commas. If your entry is invalid, the figure will default to showing the 50% break.
 
-### 6) Define your benchmark category ranges
+### Optional: Apply benchmarks
 A benchmark is an inequality against which all the values will be compared. The figure will show the distribution of values as a histogram with color coded according to which benchmark categories the observations qualify for.
 
-Each benchmark category requires a lower limit, the relationship to the lower limit, an upper limit, and a relationship to that upper limit. For example, if the category "Meeting" management goals would be true if the percentage of bare soil is below 25%, then the lower limit and relationship would be 0% <= x and the upper limit and relationship would be x < 25%; the corresponding "Not Meeting" range would be 25% <= x and x <= 100. A benchmark category can have multiple ranges entered on separate rows. Any data that do not qualify for any of the defined benchmark categories will be treated as belonging to the category "Undefined". The categories are evaluated in descending order, so it is possible to have overlapping category ranges, but the last category that a data point qualified for is the one that it will be assigned to.
+In the "Benchmark ranges" tab, each benchmark category requires a lower limit, the relationship to the lower limit, an upper limit, and a relationship to that upper limit. For example, if the category "Meeting" management goals would be true if the percentage of bare soil is below 25%, then the lower limit and relationship would be 0% <= x and the upper limit and relationship would be x < 25%; the corresponding "Not Meeting" range would be 25% <= x and x <= 100. A benchmark category can have multiple ranges entered on separate rows. Any data that do not qualify for any of the defined benchmark categories will be treated as belonging to the category "Undefined". The categories are evaluated in descending order, so it is possible to have overlapping category ranges, but the last category that a data point qualified for is the one that it will be assigned to.
+
+### Optional: Mark comparison values on figure(s)
+You may want to include a visual indication of a specific value or values on your figures for reference. This can be done by specifying a value manually *or* using values from your data.
+
+If you use your current data, you must specify the variable in the data which is unique for each observation (e.g., a plot key) and then you may choose one or more of the IDs in that variable to draw your values from. The values used will be for the indicator you are currently plotting.
+
+### Optional: Plot yearly time series
+This option will produce a boxplot of the distribution of values for the current indicator for each year occurring in the data. You must specify the variable containing the dates associated with the data and the format of the dates. If you are unsure what format your dates are in, check the "Data" tab to see.
