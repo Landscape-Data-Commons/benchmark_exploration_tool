@@ -398,7 +398,8 @@ ui <- fluidPage(
                            plotOutput("timeseries_plot"),
                            textOutput("timeseries_summary")),
                   tabPanel(title = "Data",
-                           dataTableOutput("data_table")))
+                           # dataTableOutput("data_table")))
+                           tableOutput("data_table")))
       
     )
   )
@@ -586,7 +587,8 @@ server <- function(input, output, session) {
                                      inputId = "date_variable",
                                      choices = c("", variable_names))
                    
-                   output$data_table <- renderDataTable(workspace$raw_data)
+                   # output$data_table <- renderDataTable(workspace$raw_data)
+                   output$data_table <- renderTable(workspace$raw_data)
                    
                    updateTabsetPanel(session = session,
                                      inputId = "maintabs",
