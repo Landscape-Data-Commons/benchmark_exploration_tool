@@ -73,7 +73,7 @@ ui <- fluidPage(
                    choices = c("Upload" = "upload", "Query Landscape Data Commons" = "ldc")),
       conditionalPanel(condition = "input.data_source == 'upload'",
                        fileInput(inputId = "raw_data",
-                                 label = "Exported TerrADat CSV",
+                                 label = "Data CSV",
                                  multiple = FALSE,
                                  accept = "CSV")),
       conditionalPanel(condition = "input.data_source == 'ldc'",
@@ -398,8 +398,8 @@ ui <- fluidPage(
                            plotOutput("timeseries_plot"),
                            textOutput("timeseries_summary")),
                   tabPanel(title = "Data",
-                           # dataTableOutput("data_table")))
-                           tableOutput("data_table")))
+                           dataTableOutput("data_table")))
+                           # tableOutput("data_table")))
       
     )
   )
@@ -587,8 +587,8 @@ server <- function(input, output, session) {
                                      inputId = "date_variable",
                                      choices = c("", variable_names))
                    
-                   # output$data_table <- renderDataTable(workspace$raw_data)
-                   output$data_table <- renderTable(workspace$raw_data)
+                   output$data_table <- renderDataTable(workspace$raw_data)
+                   # output$data_table <- renderTable(workspace$raw_data)
                    
                    updateTabsetPanel(session = session,
                                      inputId = "maintabs",
@@ -708,6 +708,14 @@ server <- function(input, output, session) {
                                   closeButton = FALSE,
                                   type = "message",
                                   id = "plotting")
+                 
+                 # Clean out the temp directory just to be safe
+                 current_files_in_temp_dir <- list.files(path = workspace$temp_directory,
+                                                         full.names = TRUE)
+                 for (file in current_files_in_temp_dir) {
+                   file.remove(file)
+                 }
+                 
                  # Get a copy of the data to manipulate for plotting
                  plotting_data <- workspace$raw_data
                  
