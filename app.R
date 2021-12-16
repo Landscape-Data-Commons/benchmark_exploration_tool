@@ -73,7 +73,7 @@ ui <- fluidPage(
                    choices = c("Upload" = "upload", "Query Landscape Data Commons" = "ldc")),
       conditionalPanel(condition = "input.data_source == 'upload'",
                        fileInput(inputId = "raw_data",
-                                 label = "Exported TerrADat CSV",
+                                 label = "Data CSV",
                                  multiple = FALSE,
                                  accept = "CSV")),
       conditionalPanel(condition = "input.data_source == 'ldc'",
