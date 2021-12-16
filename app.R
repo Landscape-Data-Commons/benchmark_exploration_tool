@@ -708,6 +708,14 @@ server <- function(input, output, session) {
                                   closeButton = FALSE,
                                   type = "message",
                                   id = "plotting")
+                 
+                 # Clean out the temp directory just to be safe
+                 current_files_in_temp_dir <- list.files(path = workspace$temp_directory,
+                                                         full.names = TRUE)
+                 for (file in current_files_in_temp_dir) {
+                   file.remove(file)
+                 }
+                 
                  # Get a copy of the data to manipulate for plotting
                  plotting_data <- workspace$raw_data
                  
