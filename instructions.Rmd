@@ -9,6 +9,8 @@ output:
 ### 1) Upload your data or query the Landscape Data Commons
 You can either query data from the Landscape Data Commons with an ecological site ID (search for ecological sites on [EDIT](https://edit.jornada.nmsu.edu)) *or* upload a .CSV (comma-separated values) file containing any data in a tidy format, i.e., every row is an observation/plot and every column contains the values for a different numeric indicator or measure. This is the default format for the Terrestrial AIM Database (TerrADat) which can by accessed by Department of Interior employees [here](https://aim.landscapetoolbox.org/aim-data-portal) and everyone else [here](https://landscape.blm.gov/geoportal/catalog/main/home.page).
 
+Note that once data are uploaded, there is no way to subset or filter them so you should only upload data that you know you want included in your plots.
+
 ### 2) Identify non-data variables
 In the dropdown, select all the variables that contain identifying information rather than data that might be evaluated. This includes any unique identifying variables (e.g., plot keys, plot names) and other metadata (e.g., data collector name, coordinates, dates, etc.). These will be included in the output you can download once you've plotted your data and will be excluded from the list of potential data variables to select from.
 
