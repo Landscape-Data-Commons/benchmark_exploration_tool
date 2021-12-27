@@ -121,8 +121,10 @@ ui <- fluidPage(
                                                     label = "Uniquely identifying variable",
                                                     choices = c("")),
                                         selectInput(inputId = "comparison_plot_id",
-                                                    label = "Comparison unique ID(s)",
-                                                    multiple = TRUE,
+                                                    # label = "Comparison unique ID(s)",
+                                                    # multiple = TRUE,
+                                                    label = "Comparison unique ID",
+                                                    multiple = FALSE,
                                                     choices = c("")))
       ),
       
