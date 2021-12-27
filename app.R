@@ -93,12 +93,17 @@ ui <- fluidPage(
                   label = "Indicator to plot",
                   choices = c("")),
       textInput(inputId = "variable_name",
-                label = "X-axis label",
+                label = "Indicator label",
                 value = ""),
-      textInput(inputId = "quantiles",
-                label = "Quantile break percentages, separated by commas",
-                value = "25, 50, 75"),
-      
+      radioButtons(inputId = "plot_type",
+                   label = "Plot type",
+                   choices = c("Box plot" = "boxplot",
+                               "Histogram" = "histogram"),
+                   selected = "boxplot"),
+      conditionalPanel(condition = "input.plot_type == 'histogram'",
+                       textInput(inputId = "quantiles",
+                                 label = "Quantile break percentages, separated by commas",
+                                 value = "25, 50, 75")),
       checkboxInput(inputId = "use_benchmarks",
                     label = "Apply benchmarks (see Benchmark Ranges tab)",
                     value = FALSE),
@@ -718,7 +723,13 @@ server <- function(input, output, session) {
                    variable_name <- input$variable
                    
                    #! What are the quantile proportions?
-                   quantile_proportions <- workspace$quantiles
+                   # Use 25%, 50%, and 75% for boxplots
+                   if (input$plot_type == "boxplot") {
+                     quantile_proportions <- c(0.25, 0.5, 0.75)
+                   } else {
+                     quantile_proportions <- workspace$quantiles
+                   }
+                   
                    # Make sure they're in order from smallest to largest
                    quantile_proportions <- quantile_proportions[order(quantile_proportions)]
                    
@@ -749,28 +760,112 @@ server <- function(input, output, session) {
                    plotting_data[["Quantile"]] <- factor(plotting_data[["Quantile"]],
                                                          levels = quantile_names)
                    
+                   # Add in a variable for the variable name
+                   plotting_data$variable_name <- input$variable_name
                    
                    # Make the dang plot happen!
                    if (nrow(plotting_data) > 0) {
                      message("Plotting the quantiles plot")
                      
-                     workspace$quantile_plot <- ggplot() +
-                       geom_histogram(data = plotting_data,
-                                      aes(y = current_variable,
-                                          fill = Quantile),
-                                      binwidth = 1) +
-                       scale_fill_manual(values = workspace$palette) +
-                       geom_hline(yintercept = quantiles,
-                                  size = 1,
-                                  color = "gray50") +
-                       scale_y_continuous(expand = c(0, 0)) +
-                       scale_x_continuous(expand = c(0, 0)) +
-                       labs(x = "Count of data points",
-                            y = input$variable_name) +
-                       theme(panel.grid.major.x = element_blank(),
-                             panel.grid.minor.x = element_blank(),
-                             panel.background = element_rect(fill = "gray95")) +
-                       coord_flip()
+                     if (input$plot_type == "histogram") {
+                       workspace$quantile_plot <- ggplot() +
+                         geom_histogram(data = plotting_data,
+                                        aes(y = current_variable,
+                                            fill = Quantile),
+                                        binwidth = 1) +
+                         scale_fill_manual(values = workspace$palette) +
+                         geom_hline(yintercept = quantiles,
+                                    size = 1,
+                                    color = "gray50") +
+                         scale_y_continuous(expand = c(0, 0)) +
+                         scale_x_continuous(expand = c(0, 0)) +
+                         labs(x = "Count of data points",
+                              y = input$variable_name) +
+                         theme(panel.grid.major.x = element_blank(),
+                               panel.grid.minor.x = element_blank(),
+                               panel.background = element_rect(fill = "gray95")) +
+                         coord_flip()
+                     } else if (input$plot_type == "boxplot") {
+                       # With jittered points
+                       workspace$quantile_plot <- ggplot(data = plotting_data,
+                                                         aes(y = current_variable,
+                                                             x = variable_name)) +
+                         geom_jitter(aes(color = Quantile,
+                                         fill = Quantile),
+                                     alpha = 0.25,
+                                     width = 0.1,
+                                     height = 0) +
+                         geom_boxplot(width = 0.15,
+                                      outlier.shape = NA,
+                                      size = 1,
+                                      alpha = 0.5) +
+                         scale_color_manual(values = workspace$palette) +
+                         scale_fill_manual(values = workspace$palette) +
+                         scale_y_continuous(expand = c(0, 0)) +
+                         labs(x = NULL,
+                              y = "Indicator value") +
+                         theme(panel.grid.major.y = element_blank(),
+                               panel.grid.minor.y = element_blank(),
+                               panel.background = element_rect(fill = "gray95"),
+                               axis.text.y = element_text(angle = 90,
+                                                          hjust = 0.5)) +
+                         coord_flip()
+                       
+                       # # With a dotplot
+                       # workspace$quantile_plot <- ggplot(data = plotting_data,
+                       #                                   aes(y = current_variable,
+                       #                                       x = variable_name)) +
+                       #   geom_dotplot(aes(color = Quantile,
+                       #                    fill = Quantile),
+                       #                binaxis = "y",
+                       #                stackdir = "center",
+                       #                dotsize = 0.1) +
+                       #   geom_boxplot(width = 0.15,
+                       #                outlier.shape = NA,
+                       #                size = 1,
+                       #                alpha = 0.5) +
+                       #   scale_color_manual(values = workspace$palette) +
+                       #   scale_fill_manual(values = workspace$palette) +
+                       #   scale_y_continuous(expand = c(0, 0)) +
+                       #   labs(x = NULL,
+                       #        y = "Indicator value") +
+                       #   theme(panel.grid.major.y = element_blank(),
+                       #         panel.grid.minor.y = element_blank(),
+                       #         panel.background = element_rect(fill = "gray95")) +
+                       #   coord_flip()
+                       
+                       # # With violin plots
+                       # workspace$quantile_plot <- ggplot()
+                       # 
+                       # for (quantile in quantile_names) {
+                       #   workspace$quantile_plot <- workspace$quantile_plot +
+                       #     geom_violin(data = plotting_data[plotting_data$Quantile == quantile, ],
+                       #                 aes(y = current_variable,
+                       #                     x = variable_name,
+                       #                     color = Quantile,
+                       #                     fill = Quantile))
+                       #   
+                       # }
+                       # 
+                       # workspace$quantile_plot <- workspace$quantile_plot +
+                       #   geom_boxplot(data = plotting_data,
+                       #                aes(y = current_variable,
+                       #                    x = variable_name),
+                       #                width = 0.1,
+                       #                outlier.shape = NA,
+                       #                size = 1,
+                       #                alpha = 0.5) +
+                       #   scale_color_manual(values = workspace$palette) +
+                       #   scale_fill_manual(values = workspace$palette) +
+                       #   scale_y_continuous(expand = c(0, 0)) +
+                       #   labs(x = NULL,
+                       #        y = "Indicator value") +
+                       #   theme(panel.grid.major.y = element_blank(),
+                       #         panel.grid.minor.y = element_blank(),
+                       #         panel.background = element_rect(fill = "gray95")) +
+                       #   coord_flip()
+                     }
+                     
                      
                      ## BUT!!!! WHAT IF WE'RE COMPARING VALUES ON THESE PLOTS????
                      if (input$compare) {
