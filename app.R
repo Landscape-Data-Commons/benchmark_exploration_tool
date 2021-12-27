@@ -429,6 +429,12 @@ server <- function(input, output, session) {
                                           "#f5a9c6ff",
                                           "#75c6c5ff",
                                           "#fd6794ff"))
+                              # # The IBM colorblind-friendly palette
+                              # palette = c("#648fffff",
+                              #             "#785ef0ff",
+                              #             "#dc267fff",
+                              #             "#fe6100ff",
+                              #             "#ffb000ff"))
   
   # Nor are there plots
   output$plot_files <- renderText("FALSE")
@@ -802,7 +808,7 @@ server <- function(input, output, session) {
                                                              x = variable_name)) +
                          geom_jitter(aes(color = Quantile,
                                          fill = Quantile),
-                                     alpha = 0.45,
+                                     alpha = 0.75,
                                      width = 0.1,
                                      height = 0) +
                          geom_boxplot(width = 0.15,
@@ -1085,7 +1091,7 @@ server <- function(input, output, session) {
                                                              x = variable_name)) +
                          geom_jitter(aes(color = benchmark_results,
                                          fill = benchmark_results),
-                                     alpha = 0.45,
+                                     alpha = 0.75,
                                      width = 0.1,
                                      height = 0) +
                          geom_boxplot(width = 0.15,
