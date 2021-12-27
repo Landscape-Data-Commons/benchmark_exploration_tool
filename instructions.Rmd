@@ -17,11 +17,15 @@ In the dropdown, select all the variables that contain identifying information r
 ### 3) Select the variable to plot
 In the dropdown, select which variable or indicator you want to plot. The available options will be all the column names that contained data that could be numeric. Be aware, this may include nonsense options like the unique identifying field, e.g., "ObjectID".
 
-### 4) Decide your x-axis label
-By default, the x-axis label will be the same as the variable name. It may make sense to change the label to be clearer or more human-friendly, e.g. changing "Foliar.Cover.Pct" to "Foliar cover (%)".
+### 4) Decide your indicator label
+By default, the indicator label will be the same as the variable name. It may make sense to change the label to be clearer or more human-friendly, e.g. changing "Foliar.Cover.Pct" to "Foliar cover (%)".
 
-### 5) Decide your quantile break percentages
-The histogram will be broken into quantiles according to these percentages, visualized as a histogram with color and vertical lines representing the breakpoints. As an example, entering "33, 67" will result in showing the value for the variable below which 33% percent of observations fall and the value of the variable below which 67% of the observations fall. The percentages entered must be numbers between 0 and 100 separated by commas. If your entry is invalid, the figure will default to showing the 50% break.
+### 5) Decide between generating box plots and histograms
+If you select box plots, the figures produced will be box plots of the indicator value's distribution broken into quartiles (at 25%, 50%, and 75%) with scatterplots representing the data points.
+
+If you select histograms, the figures produced will be histograms showing the indicator value's distribution, broken into quantiles.
+
+The base histogram will be broken into quantiles according to the user-defined percentages. As an example, entering "33, 67" will result in showing the value for the variable below which 33% percent of observations fall and the value of the variable below which 67% of the observations fall. The percentages entered must be numbers between 0 and 100 separated by commas. If your entry is invalid, the figure will default to showing the 50% break.
 
 ### Optional: Apply benchmarks
 A benchmark is an inequality against which all the values will be compared. The figure will show the distribution of values as a histogram with color coded according to which benchmark categories the observations qualify for.
