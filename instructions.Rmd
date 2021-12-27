@@ -17,21 +17,23 @@ In the dropdown, select all the variables that contain identifying information r
 ### 3) Select the variable to plot
 In the dropdown, select which variable or indicator you want to plot. The available options will be all the column names that contained data that could be numeric. Be aware, this may include nonsense options like the unique identifying field, e.g., "ObjectID".
 
-### 4) Decide your x-axis label
-By default, the x-axis label will be the same as the variable name. It may make sense to change the label to be clearer or more human-friendly, e.g. changing "Foliar.Cover.Pct" to "Foliar cover (%)".
+### 4) Decide your variable label
+By default, the variable label will be the same as the variable name. It may make sense to change the label to be clearer or more human-friendly, e.g. changing "Foliar.Cover.Pct" to "Foliar cover (%)".
 
-### 5) Decide your quantile break percentages
-The histogram will be broken into quantiles according to these percentages, visualized as a histogram with color and vertical lines representing the breakpoints. As an example, entering "33, 67" will result in showing the value for the variable below which 33% percent of observations fall and the value of the variable below which 67% of the observations fall. The percentages entered must be numbers between 0 and 100 separated by commas. If your entry is invalid, the figure will default to showing the 50% break.
+### 5) Select the plot type
+If you select box plots, then the figures generated will be box plots broken into quartiles (at 25%, 50%, and 75%) combined with a scatterplot showing the distribution of values.
+
+If you select histograms, then the figures generated will be histograms showing the distribution of values. When plotting histograms, you may manually set the quantiles which will be visualized with color and vertical lines representing the breakpoints. As an example, entering "33, 67" will result in showing the value for the variable below which 33% percent of observations fall and the value of the variable below which 67% of the observations fall. The percentages entered must be numbers between 0 and 100 separated by commas. If your entry is invalid, the figure will default to showing the 50% break.
 
 ### Optional: Apply benchmarks
-A benchmark is an inequality against which all the values will be compared. The figure will show the distribution of values as a histogram with color coded according to which benchmark categories the observations qualify for.
+A benchmark is an inequality against which all the values will be compared. The figure will show the distribution of values as a box plot or histogram with color coded according to which benchmark categories the observations qualify for.
 
 In the "Benchmark ranges" tab, each benchmark category requires a lower limit, the relationship to the lower limit, an upper limit, and a relationship to that upper limit. For example, if the category "Meeting" management goals would be true if the percentage of bare soil is below 25%, then the lower limit and relationship would be 0% <= x and the upper limit and relationship would be x < 25%; the corresponding "Not Meeting" range would be 25% <= x and x <= 100. A benchmark category can have multiple ranges entered on separate rows. Any data that do not qualify for any of the defined benchmark categories will be treated as belonging to the category "Undefined". The categories are evaluated in descending order, so it is possible to have overlapping category ranges, but the last category that a data point qualified for is the one that it will be assigned to.
 
 ### Optional: Mark comparison values on figure(s)
 You may want to include a visual indication of a specific value or values on your figures for reference. This can be done by specifying a value manually *or* using values from your data.
 
-If you use your current data, you must specify the variable in the data which is unique for each observation (e.g., a plot key) and then you may choose one or more of the IDs in that variable to draw your values from. The values used will be for the indicator you are currently plotting.
+If you use your current data, you must specify the variable in the data which is unique for each observation (e.g., a plot key) and then you may choose one of the IDs in that variable to draw your values from. The value used will be for the indicator you are currently plotting.
 
 ### Optional: Plot yearly time series
 This option will produce a boxplot of the distribution of values for the current indicator for each year occurring in the data. You must specify the variable containing the dates associated with the data and the format of the dates. If you are unsure what format your dates are in, check the "Data" tab to see.
