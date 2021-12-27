@@ -792,7 +792,7 @@ server <- function(input, output, session) {
                                                              x = variable_name)) +
                          geom_jitter(aes(color = Quantile,
                                          fill = Quantile),
-                                     alpha = 0.25,
+                                     alpha = 0.45,
                                      width = 0.1,
                                      height = 0) +
                          geom_boxplot(width = 0.15,
@@ -1052,6 +1052,7 @@ server <- function(input, output, session) {
                      percent_by_category <- round(100 * benchmark_results_summary / sum(benchmark_results_summary),
                                                   digits = 1)
                      
+                     if (input$plot_type == "histogram") {
                      # Plot the histogram with benchmark info!
                      workspace$benchmark_plot <- ggplot() +
                        geom_histogram(data = plotting_data,
@@ -1068,6 +1069,31 @@ server <- function(input, output, session) {
                              panel.grid.minor.x = element_blank(),
                              panel.background = element_rect(fill = "gray95")) +
                        coord_flip()
+                     } else if (input$plot_type == "boxplot") {
+                       workspace$benchmark_plot <- ggplot(data = plotting_data,
+                                                         aes(y = current_variable,
+                                                             x = variable_name)) +
+                         geom_jitter(aes(color = benchmark_results,
+                                         fill = benchmark_results),
+                                     alpha = 0.45,
+                                     width = 0.1,
+                                     height = 0) +
+                         geom_boxplot(width = 0.15,
+                                      outlier.shape = NA,
+                                      size = 1,
+                                      alpha = 0.5) +
+                         scale_color_manual(values = workspace$palette) +
+                         scale_fill_manual(values = workspace$palette) +
+                         scale_y_continuous(expand = c(0, 0)) +
+                         labs(x = NULL,
+                              y = "Indicator value") +
+                         theme(panel.grid.major.y = element_blank(),
+                               panel.grid.minor.y = element_blank(),
+                               panel.background = element_rect(fill = "gray95"),
+                               axis.text.y = element_text(angle = 90,
+                                                          hjust = 0.5)) +
+                         coord_flip()
+                     }
                      
                      ## BUT!!!! WHAT IF WE'RE COMPARING VALUES ON THESE PLOTS????
                      if (input$compare) {
