@@ -808,16 +808,16 @@ server <- function(input, output, session) {
                                                              x = variable_name)) +
                          geom_jitter(aes(color = Quantile,
                                          fill = Quantile),
-                                     alpha = 0.75,
-                                     width = 0.1,
+                                     alpha = 0.45,
+                                     width = 0.125,
                                      height = 0) +
-                         geom_boxplot(width = 0.15,
+                         geom_boxplot(width = 0.25,
                                       outlier.shape = NA,
                                       size = 1,
-                                      alpha = 0.5) +
+                                      fill = NA) +
                          scale_color_manual(values = workspace$palette) +
                          scale_fill_manual(values = workspace$palette) +
-                         scale_y_continuous(expand = c(0, 0)) +
+                         scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
                          labs(x = NULL,
                               y = "Indicator value") +
                          theme(panel.grid.major.y = element_blank(),
@@ -1091,16 +1091,16 @@ server <- function(input, output, session) {
                                                              x = variable_name)) +
                          geom_jitter(aes(color = benchmark_results,
                                          fill = benchmark_results),
-                                     alpha = 0.75,
-                                     width = 0.1,
+                                     alpha = 0.45,
+                                     width = 0.125,
                                      height = 0) +
-                         geom_boxplot(width = 0.15,
+                         geom_boxplot(width = 0.25,
                                       outlier.shape = NA,
                                       size = 1,
-                                      alpha = 0.5) +
+                                      fill = NA) +
                          scale_color_manual(values = workspace$palette) +
                          scale_fill_manual(values = workspace$palette) +
-                         scale_y_continuous(expand = c(0, 0)) +
+                         scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
                          labs(x = NULL,
                               y = "Indicator value") +
                          theme(panel.grid.major.y = element_blank(),
