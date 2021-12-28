@@ -1102,7 +1102,9 @@ server <- function(input, output, session) {
                          scale_fill_manual(values = workspace$palette) +
                          scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
                          labs(x = NULL,
-                              y = "Indicator value") +
+                              y = "Indicator value",
+                              fill = "Benchmark status",
+                              color = "Benchmark status") +
                          theme(panel.grid.major.y = element_blank(),
                                panel.grid.minor.y = element_blank(),
                                panel.background = element_rect(fill = "gray95"),
