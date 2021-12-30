@@ -764,15 +764,29 @@ server <- function(input, output, session) {
                    quantile_indices <- !(names(quantiles) %in% c("0%", "100%"))
                    quantiles <- quantiles[quantile_indices]
                    
+                   # Make these names work for the figure, e.g. convert from "75%" to "50% to 75%"
+                   original_quantile_names <- names(quantiles)
+                   updated_quantile_names <- original_quantile_names
+                   for (quantile_index in seq_len(length(original_quantile_names))) {
+                     if (quantile_index == 1) {
+                       updated_quantile_names[quantile_index] <- paste0("0% to ", original_quantile_names[quantile_index])
+                     } else {
+                       updated_quantile_names[quantile_index] <- paste0(original_quantile_names[quantile_index - 1], " to ", original_quantile_names[quantile_index])
+                     }
+                   }
+                   names(quantiles) <- updated_quantile_names
+                   
                    # Write in the quantile that the values belong in, starting with all of them in 100%
-                   plotting_data[["Quantile"]] <- "100%"
+                   plotting_data[["Quantile"]] <- paste0(original_quantile_names[length(original_quantile_names)], " to 100%")
+                   
                    # Then in order from largest to smallest, assign the rest of the quantiles
                    for (current_quantile in names(quantiles)[length(quantiles):1]) {
                      plotting_data[["Quantile"]][plotting_data[["current_variable"]] <= quantiles[current_quantile]] <- current_quantile
                    }
                    
                    # Correct the order of the legend items
-                   quantile_names <- unique(c(names(quantiles), "100%"))
+                   quantile_names <- unique(c(names(quantiles),
+                                              paste0(original_quantile_names[length(original_quantile_names)], " to 100%")))
                    plotting_data[["Quantile"]] <- factor(plotting_data[["Quantile"]],
                                                          levels = quantile_names)
                    
@@ -918,7 +932,7 @@ server <- function(input, output, session) {
                    
                    # Create the caption for the quantile plot
                    quantile_plot_caption <- paste0("Figure 1: The distribution of values for the indicator across ", nrow(plotting_data), " data points, broken into ", length(quantiles) + 1, " quantiles. ",
-                                                   paste0(paste0(paste0(names(quantiles), " of data points have a value <= "),
+                                                   paste0(paste0(paste0(original_quantile_names, " of data points have a value <= "),
                                                                  round(quantiles, digits = 1),
                                                                  collapse = ", "),
                                                           ", and 100% of data points have a value <= ", round(max(current_data_vector, na.rm = TRUE), digits = 1)))
