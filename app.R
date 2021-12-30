@@ -937,6 +937,11 @@ server <- function(input, output, session) {
                                                                  collapse = ", "),
                                                           ", and 100% of data points have a value <= ", round(max(current_data_vector, na.rm = TRUE), digits = 1)))
                    
+                   if (input$plot_type == "boxplot") {
+                     quantile_plot_caption <- paste0(quantile_plot_caption,
+                                                     " Whiskers are drawn with a length equal to 1.5 times the interquartile range or to the most extreme data point, whichever is shortest.")
+                   }
+                   
                    # Okay, but we also need the captions to reflect the comparison values if they were requested!
                    if (input$compare) {
                      if (length(comparison_vector) == 1) {
@@ -1162,6 +1167,11 @@ server <- function(input, output, session) {
                                                       " data points classified into benchmark categories. ",
                                                       "Of the ", sum(benchmark_results_summary), " data points, ",
                                                       category_statements, ".")
+                     
+                     if (input$plot_type == "boxplot") {
+                       benchmark_plot_caption <- paste0(benchmark_plot_caption,
+                                                       " Whiskers are drawn with a length equal to 1.5 times the interquartile range or to the most extreme data point, whichever is shortest.")
+                     }
                      
                      if (!is.null(comparison_caption_text)) {
                        benchmark_plot_caption <- paste(benchmark_plot_caption,
