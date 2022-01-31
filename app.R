@@ -756,6 +756,12 @@ server <- function(input, output, session) {
                    # Get those values as a vector
                    current_data_vector <- plotting_data[[variable_name]]
                    
+                   # Get the mean and standard deviation for the current data
+                   current_data_mean <- mean(current_data_vector,
+                                             na.rm = TRUE)
+                   current_data_stddev <- sd(current_data_vector,
+                                             na.rm = TRUE)
+                   
                    # Find the quantile breaks
                    quantiles <- quantile(current_data_vector,
                                          probs = quantile_proportions,
@@ -941,6 +947,10 @@ server <- function(input, output, session) {
                      quantile_plot_caption <- paste0(quantile_plot_caption,
                                                      " Whiskers are drawn with a length equal to 1.5 times the interquartile range or to the most extreme data point, whichever is shortest.")
                    }
+                   
+                   quantile_plot_caption <- paste0(quantile_plot_caption,
+                                                   " The mean value is ", round(current_data_mean, digits = 1),
+                                                   " and the standard deviation is ", round(current_data_stddev, digits = 1), ".")
                    
                    # Okay, but we also need the captions to reflect the comparison values if they were requested!
                    if (input$compare) {
@@ -1170,7 +1180,7 @@ server <- function(input, output, session) {
                      
                      if (input$plot_type == "boxplot") {
                        benchmark_plot_caption <- paste0(benchmark_plot_caption,
-                                                       " Whiskers are drawn with a length equal to 1.5 times the interquartile range or to the most extreme data point, whichever is shortest.")
+                                                        " Whiskers are drawn with a length equal to 1.5 times the interquartile range or to the most extreme data point, whichever is shortest.")
                      }
                      
                      if (!is.null(comparison_caption_text)) {
