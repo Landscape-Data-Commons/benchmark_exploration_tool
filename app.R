@@ -175,7 +175,7 @@ ui <- fluidPage(
                            includeHTML("instructions.html")),
                   
                   tabPanel(title = "Benchmark ranges",
-
+                           
                            conditionalPanel(condition = "input.use_benchmarks",
                                             selectInput(inputId = "range_count",
                                                         label = "Number of benchmark ranges",
@@ -412,7 +412,7 @@ ui <- fluidPage(
                            textOutput("timeseries_summary")),
                   tabPanel(title = "Data",
                            dataTableOutput("data_table")))
-                           # tableOutput("data_table")))
+      # tableOutput("data_table")))
       
     )
   )
