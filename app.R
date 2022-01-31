@@ -836,7 +836,8 @@ server <- function(input, output, session) {
                                                          aes(y = current_variable,
                                                              x = variable_name)) +
                          geom_jitter(aes(color = Quantile,
-                                         fill = Quantile),
+                                         fill = Quantile,
+                                         shape = Quantile),
                                      alpha = 0.45,
                                      width = 0.125,
                                      height = 0) +
@@ -846,7 +847,9 @@ server <- function(input, output, session) {
                                       fill = NA) +
                          scale_color_manual(values = workspace$palette) +
                          scale_fill_manual(values = workspace$palette) +
-                         scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+                         scale_shape_manual(values = c(22, 21, 24, 23)) +
+                         scale_y_continuous(limits = c(input$value_min, input$value_max),
+                                            expand = expansion(mult = c(0, 0))) +
                          labs(x = NULL,
                               y = "Indicator value") +
                          theme(panel.grid.major.y = element_blank(),
@@ -1128,7 +1131,8 @@ server <- function(input, output, session) {
                                                          aes(y = current_variable,
                                                              x = variable_name)) +
                          geom_jitter(aes(color = benchmark_results,
-                                         fill = benchmark_results),
+                                         fill = benchmark_results,
+                                         shape = benchmark_results),
                                      alpha = 0.45,
                                      width = 0.125,
                                      height = 0) +
@@ -1138,11 +1142,12 @@ server <- function(input, output, session) {
                                       fill = NA) +
                          scale_color_manual(values = workspace$palette) +
                          scale_fill_manual(values = workspace$palette) +
-                         scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+                         scale_shape_manual(values = c(22, 21, 24, 23)) +
                          labs(x = NULL,
                               y = "Indicator value",
                               fill = "Benchmark status",
-                              color = "Benchmark status") +
+                              color = "Benchmark status",
+                              shape = "Benchmark status") +
                          theme(panel.grid.major.y = element_blank(),
                                panel.grid.minor.y = element_blank(),
                                panel.background = element_rect(fill = "gray95"),
