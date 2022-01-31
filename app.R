@@ -1283,10 +1283,15 @@ server <- function(input, output, session) {
                                                              levels = years_levels)
                      
                      # Plot the figure
-                     workspace$timeseries_plot <- ggplot() +
-                       geom_boxplot(data = timeseries_plotting_data,
-                                    aes(x = year,
-                                        y = value)) +
+                     workspace$timeseries_plot <- ggplot(data = timeseries_plotting_data,
+                                                         aes(x = year,
+                                                             y = value)) +
+                       geom_jitter(aes(color = year),
+                                   alpha = 0.45,
+                                   # width = 0.125,
+                                   height = 0) +
+                       geom_boxplot(fill = NA,
+                                    outlier.shape = NA) +
                        labs(y = input$variable_name,
                             x = "Year") +
                        theme(panel.grid.minor.x = element_blank(),
