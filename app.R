@@ -397,7 +397,7 @@ ui <- fluidPage(
                            
                   ),
                   
-                  tabPanel(title = "Results",
+                  tabPanel(title = "Figures",
                            plotOutput("quantiles_plot"),
                            textOutput("quantile_caption"),
                            plotOutput("benchmark_plot"),
@@ -1318,7 +1318,7 @@ server <- function(input, output, session) {
                    
                    updateTabsetPanel(session,
                                      inputId = "maintabs",
-                                     selected = "Results") 
+                                     selected = "Figures") 
                    
                    message(paste0("Setting work directory to ",
                                   workspace$temp_directory))
