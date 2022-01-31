@@ -421,20 +421,29 @@ server <- function(input, output, session) {
                               original_directory = getwd(),
                               quantiles = c(0.25, 0.5, 0.75),
                               # The color palette for the figures
-                              palette = c("#f5bb57ff",
-                                          "#f8674cff",
-                                          "#4a8b9fff",
-                                          "#685b7fff",
-                                          "#c95294ff",
-                                          "#f5a9c6ff",
-                                          "#75c6c5ff",
-                                          "#fd6794ff"))
+                              # palette = c("#f5bb57ff",
+                              #             "#f8674cff",
+                              #             "#4a8b9fff",
+                              #             "#685b7fff",
+                              #             "#c95294ff",
+                              #             "#f5a9c6ff",
+                              #             "#75c6c5ff",
+                              #             "#fd6794ff"))
                               # # The IBM colorblind-friendly palette
                               # palette = c("#648fffff",
                               #             "#785ef0ff",
                               #             "#dc267fff",
                               #             "#fe6100ff",
                               #             "#ffb000ff"))
+                              # The Tol colorblind-friendly palette
+                              palette = c("#332288ff",
+                                          "#117733ff",
+                                          "#44AA99ff",
+                                          "#88CCEEff",
+                                          "#DDCC77ff",
+                                          "#CC6677ff",
+                                          "#AA4499ff",
+                                          "#882255ff"))
   
   # Nor are there plots
   output$plot_files <- renderText("FALSE")
