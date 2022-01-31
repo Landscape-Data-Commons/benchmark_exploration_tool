@@ -95,6 +95,12 @@ ui <- fluidPage(
       textInput(inputId = "variable_name",
                 label = "Indicator label",
                 value = ""),
+      numericInput(inputId = "value_min",
+                   label = "Minimum possible indicator value",
+                   value = 0),
+      numericInput(inputId = "value_max",
+                   label = "Maximum possible indicator value",
+                   value = 100),
       radioButtons(inputId = "plot_type",
                    label = "Plot type",
                    choices = c("Box plot" = "boxplot",
@@ -624,6 +630,20 @@ server <- function(input, output, session) {
                  updateTextInput(session,
                                  inputId = "variable_name",
                                  value = input$variable)
+                 message("Updating minimum value to", min(workspace$raw_data[[input$variable]],
+                                                          na.rm = TRUE))
+                 updateNumericInput(session,
+                                    inputId = "value_min",
+                                    value = min(0,
+                                                min(workspace$raw_data[[input$variable]],
+                                                    na.rm = TRUE)))
+                 message("Updating maximum value to", max(workspace$raw_data[[input$variable]],
+                                                          na.rm = TRUE))
+                 updateNumericInput(session,
+                                    inputId = "value_max",
+                                    value = max(100,
+                                                max(workspace$raw_data[[input$variable]],
+                                                    na.rm = TRUE)))
                })
   
   #### When the uniquely identifying variable is updated, do this ####
@@ -822,7 +842,8 @@ server <- function(input, output, session) {
                          geom_hline(yintercept = quantiles,
                                     size = 1,
                                     color = "gray50") +
-                         scale_y_continuous(expand = c(0, 0)) +
+                         scale_y_continuous(limits = c(input$value_min, input$value_max),
+                                            expand = expansion(mult = c(0, 0))) +
                          scale_x_continuous(expand = c(0, 0)) +
                          labs(x = "Count of data points",
                               y = input$variable_name) +
@@ -1110,26 +1131,27 @@ server <- function(input, output, session) {
                                                   digits = 1)
                      
                      if (input$plot_type == "histogram") {
-                     # Plot the histogram with benchmark info!
-                     workspace$benchmark_plot <- ggplot() +
-                       geom_histogram(data = plotting_data,
-                                      aes(y = current_variable,
-                                          fill = benchmark_results),
-                                      binwidth = 1) +
-                       scale_fill_manual(values = workspace$palette) +
-                       scale_y_continuous(expand = c(0, 0)) +
-                       scale_x_continuous(expand = c(0, 0)) +
-                       labs(x = "Count of data points",
-                            y = input$variable_name,
-                            fill = "Benchmark status") +
-                       theme(panel.grid.major.x = element_blank(),
-                             panel.grid.minor.x = element_blank(),
-                             panel.background = element_rect(fill = "gray95")) +
-                       coord_flip()
+                       # Plot the histogram with benchmark info!
+                       workspace$benchmark_plot <- ggplot() +
+                         geom_histogram(data = plotting_data,
+                                        aes(y = current_variable,
+                                            fill = benchmark_results),
+                                        binwidth = 1) +
+                         scale_fill_manual(values = workspace$palette) +
+                         scale_y_continuous(limits = c(input$value_min, input$value_max),
+                                            expand = expansion(mult = c(0, 0))) +
+                         scale_x_continuous(expand = c(0, 0)) +
+                         labs(x = "Count of data points",
+                              y = input$variable_name,
+                              fill = "Benchmark status") +
+                         theme(panel.grid.major.x = element_blank(),
+                               panel.grid.minor.x = element_blank(),
+                               panel.background = element_rect(fill = "gray95")) +
+                         coord_flip()
                      } else if (input$plot_type == "boxplot") {
                        workspace$benchmark_plot <- ggplot(data = plotting_data,
-                                                         aes(y = current_variable,
-                                                             x = variable_name)) +
+                                                          aes(y = current_variable,
+                                                              x = variable_name)) +
                          geom_jitter(aes(color = benchmark_results,
                                          fill = benchmark_results,
                                          shape = benchmark_results),
@@ -1143,6 +1165,8 @@ server <- function(input, output, session) {
                          scale_color_manual(values = workspace$palette) +
                          scale_fill_manual(values = workspace$palette) +
                          scale_shape_manual(values = c(22, 21, 24, 23)) +
+                         scale_y_continuous(limits = c(input$value_min, input$value_max),
+                                            expand = expansion(mult = c(0, 0))) +
                          labs(x = NULL,
                               y = "Indicator value",
                               fill = "Benchmark status",
