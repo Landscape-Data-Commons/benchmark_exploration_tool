@@ -14,10 +14,10 @@ Note that once data are uploaded, there is no way to subset or filter them so yo
 ### 2) Identify non-data variables
 In the dropdown, select all the variables that contain identifying information rather than data that might be evaluated. This includes any unique identifying variables (e.g., plot keys, plot names) and other metadata (e.g., data collector name, coordinates, dates, etc.). These will be included in the output you can download once you've plotted your data and will be excluded from the list of potential data variables to select from.
 
-### 3) Select the variable to plot
+### 3) Select the indicator/variable to plot
 In the dropdown, select which variable or indicator you want to plot. The available options will be all the column names that contained data that could be numeric. Be aware, this may include nonsense options like the unique identifying field, e.g., "ObjectID".
 
-### 4) Decide your variable label
+### 4) Decide your indicator/variable label
 By default, the variable label will be the same as the variable name. It may make sense to change the label to be clearer or more human-friendly, e.g. changing "Foliar.Cover.Pct" to "Foliar cover (%)".
 
 ### 5) Select the plot type
