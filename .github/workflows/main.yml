@@ -41,4 +41,4 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             docker service update shinyproxy-toolbox_benchmark-exploration-tool \
-            --image=docker.io/landscapedatacommons/benchmark-benchmark-exploration-tool:4.0.5
+            --image=docker.io/landscapedatacommons/benchmark-exploration-tool:4.0.5
