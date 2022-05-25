@@ -5,9 +5,9 @@ RUN mkdir /benchmark-exploration-tool
 # copy app to image
 COPY . /benchmark-exploration-tool
 # create Rprofile.site file in container
-RUN echo "local({options(shiny.port = 3838, shiny.host = '0.0.0.0')})" > /usr/lib/R/etc/Rprofile.site
+RUN echo "local({options(shiny.port = 3839, shiny.host = '0.0.0.0')})" > /usr/lib/R/etc/Rprofile.site
 # select port
-EXPOSE 3838
+EXPOSE 3839
 # run app
-CMD ["R", "-e", "shiny::runApp('/benchmark-exploration-tool', host = '0.0.0.0', port = 3838)"]
+CMD ["R", "-e", "shiny::runApp('/benchmark-exploration-tool', host = '0.0.0.0', port = 3839)"]
 #CMD ["tail","-f", "/dev/null"]
