@@ -1,4 +1,4 @@
-FROM landscapedatacommons/r-base:4.0.5
+FROM landscapedatacommons/r-base:4.2.1
 LABEL maintainer='Ken Ramsey <kramsey@jornada-vmail.nmsu.edu>'
 # make app folder
 RUN mkdir /benchmark-exploration-tool
@@ -9,5 +9,6 @@ RUN echo "local({options(shiny.port = 3838, shiny.host = '0.0.0.0')})" > /usr/li
 # select port
 EXPOSE 3838
 # run app
-CMD ["R", "-e", "shiny::runApp('/benchmark-exploration-tool', host = '0.0.0.0', port = 3838)"]
+#CMD ["R", "-e", "shiny::runApp('/benchmark-exploration-tool', host = '0.0.0.0', port = 3838)"]
+CMD ["R", "-e", "shiny::runApp('/benchmark-exploration-tool')"]
 #CMD ["tail","-f", "/dev/null"]
