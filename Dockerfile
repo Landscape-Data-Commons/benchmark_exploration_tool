@@ -1,4 +1,4 @@
-FROM landscapedatacommons/r-base:4.0.5
+FROM landscapedatacommons/r-base:4.2.1
 LABEL maintainer='Ken Ramsey <kramsey@jornada-vmail.nmsu.edu>'
 # make app folder
 RUN mkdir /benchmark-exploration-tool
