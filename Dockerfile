@@ -5,12 +5,12 @@ RUN echo "local({options(shiny.port = 3838, shiny.host = '0.0.0.0')})" > /usr/li
 # change user
 USER docker
 # make app folder
-RUN mkdir ~/benchmark-exploration-tool
+RUN mkdir /home/docker/benchmark-exploration-tool
 # copy app to image
-COPY . ~/benchmark-exploration-tool
+COPY . /home/docker/benchmark-exploration-tool
 # select port
 EXPOSE 3838
 # run app
 #CMD ["R", "-e", "shiny::runApp('/benchmark-exploration-tool', host = '0.0.0.0', port = 3838)"]
-CMD ["R", "-e", "shiny::runApp('/benchmark-exploration-tool')"]
+CMD ["R", "-e", "shiny::runApp('/home/docker/benchmark-exploration-tool')"]
 #CMD ["tail","-f", "/dev/null"]
