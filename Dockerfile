@@ -1,11 +1,13 @@
 FROM landscapedatacommons/r-base:4.2.1
 LABEL maintainer='Ken Ramsey <kramsey@jornada-vmail.nmsu.edu>'
-# make app folder
-RUN mkdir /benchmark-exploration-tool
-# copy app to image
-COPY . /benchmark-exploration-tool
 # create Rprofile.site file in container
 RUN echo "local({options(shiny.port = 3838, shiny.host = '0.0.0.0')})" > /usr/lib/R/etc/Rprofile.site
+# change user
+USER docker
+# make app folder
+RUN mkdir ~/benchmark-exploration-tool
+# copy app to image
+COPY . ~/benchmark-exploration-tool
 # select port
 EXPOSE 3838
 # run app
