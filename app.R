@@ -1,18 +1,9 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
 library(ggplot2)
 library(dplyr)
 library(httr)
 library(stringr)
-# library(plotly)
+source("functions.R")
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -77,12 +68,18 @@ ui <- fluidPage(
                                  multiple = FALSE,
                                  accept = "CSV")),
       conditionalPanel(condition = "input.data_source == 'ldc'",
-                       textInput(inputId = "ecosite_id",
-                                 label = "Ecological Site ID",
+                       selectInput(inputId = "key_type",
+                                   label = "LDC search type",
+                                   choices = c("By ecological site" = "EcologicalSiteID",
+                                               "By PrimaryKey" = "PrimaryKey",
+                                               "By ProjectKey" = "ProjectKey"),
+                                   selected = "ecosite"),
+                       textInput(inputId = "keys",
+                                 label = "Search values",
                                  value = "",
                                  placeholder = "R042XB012NM"),
                        actionButton(inputId = "fetch_data",
-                                    label = "Fetch data from the Landscape Data Commons")),
+                                    label = "Fetch data")),
       
       hr(),
       selectInput(inputId = "id_variables",
@@ -469,90 +466,164 @@ server <- function(input, output, session) {
                                   closeButton = FALSE,
                                   id = "downloading",
                                   type = "message")
-                 # output$ecosite_error <- renderText("")
-                 # Only do anything if there's an ecosite ID
-                 if (input$ecosite_id != "") {
-                   # Make sure it's uppercase
-                   ecosite_id <- toupper(input$ecosite_id)
-                   
+                 
+                 # Set this variable so we can handle the data appropriately based on source
+                 # Since there are from the LDC, we'll also be looking for header info
+                 workspace$current_data_source <- "ldc"
+                 message("Data source set to LDC")
+                 
+                 # Only do anything if there's at least one key
+                 if (input$keys != "") {
                    # Handle multiple requested ecosites at once!
-                   ecosite_id_vector <- stringr::str_split(string = ecosite_id,
-                                                           pattern = ",",
-                                                           simplify = TRUE)
-                   ecosite_id_vector <- trimws(ecosite_id_vector)
+                   current_key_vector <- stringr::str_split(string = input$keys,
+                                                            pattern = ",",
+                                                            simplify = TRUE)
                    
-                   query_results_list <- lapply(X = ecosite_id_vector,
-                                                FUN = function(X){
-                                                  # Build the query
-                                                  query <- paste0("https://api.landscapedatacommons.org/api/",
-                                                                  "geoindicators?",
-                                                                  "EcologicalSiteId=",
-                                                                  X)
-                                                  
-                                                  # Getting the data via curl
-                                                  # connection <- curl::curl(query)
-                                                  # results_raw <- readLines(connection)
-                                                  # results <- jsonlite::fromJSON(results_raw)
-                                                  message("Attempting to query EDIT")
-                                                  message(query)
-                                                  # Full query results for geoindicators based on ecosite
-                                                  full_results <- httr::GET(query,
-                                                                            config = httr::timeout(30))
-                                                  # Grab only the data portion
-                                                  results_raw <- full_results[["content"]]
-                                                  # Convert from raw to character
-                                                  results_character <- rawToChar(results_raw)
-                                                  # Convert from character to data frame
-                                                  results <- jsonlite::fromJSON(results_character)
-                                                  message("Results converted from json to character")
-                                                  
-                                                  # THIS IS IMPORTANT!
-                                                  # Remove rows without data, which apparently happens
-                                                  # We'll just trust that the indicator names are going to follow the same pattern
-                                                  # so we can check the first variable starting with "AH_" for NA values
-                                                  if (length(results) > 0) {
-                                                    results_var_names <- names(results)
-                                                    indicator_var_indices <- grep(x = results_var_names,
-                                                                                  pattern = "^AH_")
-                                                    # So this assumes that if the any single indicator value for an observation is NA,
-                                                    # then ALL indicator values for that observation will be NA
-                                                    test_indicator_var <- results_var_names[indicator_var_indices[1]]
-                                                    
-                                                    indices_with_data <- !is.na(results[[test_indicator_var]])
-                                                    
-                                                    results[indices_with_data, ]
-                                                  } else {
-                                                    NULL
-                                                  }
-                                                  
-                                                })
+                   # This will make it easy to check to see if any of these values
+                   # weren't associated with data
+                   current_key_vector <- trimws(current_key_vector)
                    
-                   results <- do.call(rbind,
-                                      query_results_list)
-                   message("results currently are:")
-                   message(results)
-                   # So we can tell the user later which actually got queried
-                   if (is.null(results)) {
-                     workspace$missing_ecosites <- ecosite_id_vector
+                   # fetch_ldc() can take a vector (slow, retrieves one at a time)
+                   # or a string of values separated by commas (fast, retrieves all at once)
+                   current_key_string <- paste(current_key_vector,
+                                               collapse = ",")
+                   
+                   
+                   # The API queryable tables don't include ecosite, so we grab
+                   # the header table and get primary keys from that
+                   if (input$key_type == "EcologicalSiteID") {
+                     message("key_type is EcologicalSiteID")
+                     message("Retrieving headers")
+                     current_headers <- tryCatch(fetch_ldc(keys = current_key_string,
+                                                           key_type = input$key_type,
+                                                           data_type = "header",
+                                                           verbose = TRUE),
+                                                 error = function(error){
+                                                   gsub(x = error,
+                                                        pattern = "^Error.+[ ]:[ ]",
+                                                        replacement = "")
+                                                 })
+                     message(paste0("class(current_headers) is ",
+                                    paste(class(current_headers),
+                                          collapse = ", ")))
+                     if ("character" %in% class(current_headers)) {
+                       showNotification(ui = current_headers,
+                                        duration = NULL,
+                                        closeButton = TRUE,
+                                        type = "error",
+                                        id = "api_headers_error")
+                       results <- NULL
+                     } else {
+                       current_primary_keys <- current_headers$PrimaryKey
+                       
+                       current_key_chunk_count <- ceiling(length(current_primary_keys) / 100)
+                       
+                       current_primary_keys <- sapply(X = 1:current_key_chunk_count,
+                                                      keys_vector = current_primary_keys,
+                                                      key_chunk_size = 100,
+                                                      key_count = length(current_primary_keys),
+                                                      FUN = function(X, keys_vector, key_chunk_size, key_count) {
+                                                        min_index <- max(c(1, (X - 1) * key_chunk_size + 1))
+                                                        max_index <- min(c(key_count, X * key_chunk_size))
+                                                        indices <- min_index:max_index
+                                                        paste(keys_vector[indices],
+                                                              collapse = ",")
+                                                      })
+                       message(paste(current_primary_keys,
+                                     collapse = ", "))
+                       message("Retrieving data using PrimaryKey values from headers")
+                       results <- tryCatch(fetch_ldc(keys = current_primary_keys,
+                                                     key_type = "PrimaryKey",
+                                                     data_type = "indicators",
+                                                     verbose = TRUE),
+                                           error = function(error){
+                                             gsub(x = error,
+                                                  pattern = "^Error.+[ ]:[ ]",
+                                                  replacement = "")
+                                           })
+                     }
                    } else {
-                     workspace$queried_ecosites <- unique(results$EcologicalSiteId)
-                     workspace$missing_ecosites <- ecosite_id_vector[!(ecosite_id_vector %in% workspace$queried_ecosites)]
+                     message("key_type is not EcologicalSiteID")
+                     message("Retrieving data using provided keys")
+                     current_key_chunk_count <- ceiling(length(current_key_vector) / 100)
+                     
+                     current_keys_chunks <- sapply(X = 1:current_key_chunk_count,
+                                                   keys_vector = current_key_vector,
+                                                   key_chunk_size = 100,
+                                                   key_count = length(current_key_vector),
+                                                   FUN = function(X, keys_vector, key_chunk_size, key_count) {
+                                                     min_index <- max(c(1, (X - 1) * key_chunk_size + 1))
+                                                     max_index <- min(c(key_count, X * key_chunk_size))
+                                                     indices <- min_index:max_index
+                                                     paste(keys_vector[indices],
+                                                           collapse = ",")
+                                                   })
+                     
+                     results <- tryCatch(fetch_ldc(keys = current_keys_chunks,
+                                                   key_type = input$key_type,
+                                                   data_type = "indicators",
+                                                   verbose = TRUE),
+                                         error = function(error){
+                                           gsub(x = error,
+                                                pattern = "^Error.+[ ]:[ ]",
+                                                replacement = "")
+                                         })
                    }
                    
-                   if (length(workspace$missing_ecosites) > 0) {
-                     ecosite_error <- paste0("The following ecological site IDs are not associated with data in the LDC: ",
-                                             paste(workspace$missing_ecosites,
-                                                   collapse = ", "))
-                     showNotification(ui = ecosite_error,
+                   
+                   # So we can tell the user later which actually got queried
+                   if (is.null(results)) {
+                     message("No data from LDC!")
+                     workspace$missing_keys <- current_key_vector
+                     showNotification(ui = "No data were found associated with your keys.",
                                       duration = NULL,
                                       closeButton = TRUE,
                                       type = "warning",
-                                      id = "ecosite_error")
+                                      id = "no_data_returned_warning")
+                   } else if ("character" %in% class(results)) {
+                     # If results is actually an error message, display it
+                     showNotification(ui = results,
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      type = "error",
+                                      id = "api_error")
+                     workspace$missing_keys <- NULL
+                   } else {
+                     message("Determining if keys are missing.")
+                     message(paste0("input$key_type is: ",
+                                    paste(input$key_type,
+                                          collapse = ", ")))
+                     # Because ecosites were two-stage, we check in with headers
+                     if (input$key_type %in% c("EcologicalSiteID")) {
+                       workspace$queried_keys <- unique(current_headers[[input$key_type]])
+                     } else {
+                       workspace$queried_keys <- unique(results[[input$key_type]])
+                     }
+                     
+                     workspace$missing_keys <- current_key_vector[!(current_key_vector %in% workspace$queried_keys)]
+                   }
+                   
+                   message("Determining if workspace$missing_keys has length > 0")
+                   if (length(workspace$missing_keys) > 0) {
+                     message(paste0("The following key values are missing: ",
+                                    paste(workspace$missing_keys,
+                                          collapse = ", ")))
+                     key_error <- paste0("The following keys did not have data associated with them: ",
+                                         paste(workspace$missing_keys,
+                                               collapse = ", "))
+                     showNotification(ui = key_error,
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      type = "warning",
+                                      id = "key_error")
+                   } else {
+                     message("No missing keys!")
                    }
                    
                    
                    # Only keep going if there are results!!!!
-                   if (length(results) > 0) {
+                   if (length(results) > 0 & "data.frame" %in% class(results)) {
+                     message("Coercing variables to numeric.")
                      # Convert from character to numeric variables where possible
                      data_corrected <- lapply(X = names(results),
                                               data = results,
@@ -577,10 +648,16 @@ server <- function(input, output, session) {
                      names(data) <- names(results)
                      
                      # Put it in the workspace list
+                     message("Setting data_fresh to TRUE because we just downloaded it")
+                     workspace$data_fresh <- TRUE
                      workspace$raw_data <- data
                    } else {
                      workspace$raw_data <- NULL
                    }
+                   
+                   message("Data are from the LDC and include header info. Setting workspace$headers to NULL.")
+                   workspace$headers <- NULL
+                   
                  }
                  removeNotification(id = "downloading")
                })
