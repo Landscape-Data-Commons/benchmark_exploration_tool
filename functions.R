@@ -1,7 +1,7 @@
 #' Query the Landscape Data Commons
 #' @description Fetch data from the Landscape Data commons, querying by ecological site ID, PrimaryKey, or ProjectKey.
 #' @param keys Character vector. The character strings containing the values to match in the query/queries. May also be a single character string of key values separated by commas, e.g. \code{"R036XB006NM,R042XB012NM"}.
-#' @param key_type Character string. The type of key values being used. This determines which variable in the Landscape Data Commons to filter using the values \code{keys}. Must be a valid variable name in the queried data table. Common key types include \code{"EcologicalSiteID"}, \code{"PrimaryKey"}, and \code{"ProjectKey"}. For details, the API documentation is available here: https://napi.landscapedatacommons.org/api-docs
+#' @param key_type Character string. The type of key values being used. This determines which variable in the Landscape Data Commons to filter using the values \code{keys}. Must be a valid variable name in the queried data table. Common key types include \code{"EcologicalSiteID"}, \code{"PrimaryKey"}, and \code{"ProjectKey"}. For details, the API documentation is available here: https://api.landscapedatacommons.org/api-docs
 #' @param data_type Character string. Determines which table to download data from. Valid values are \code{"lpi"}, \code{"height"}, \code{"gap"}, \code{"soilstability"}, \code{"species"}, \code{"speciesinventory"}, \code{"indicators"}, \code{"horizontalflux"}, \code{"dustdeposition"}, and \code{"header"}.
 #' @param verbose Logical. If \code{TRUE} then the function will report with diagnostic messages as it runs. Defaults to \code{FALSE}.
 #' @export
@@ -10,7 +10,7 @@ fetch_ldc <- function(keys,
                       data_type,
                       verbose = FALSE){
   # Hardcoding the available variables in each of the queryable tables
-  # See: https://napi.landscapedatacommons.org/api-docs
+  # See: https://api.landscapedatacommons.org/api-docs
   table_vars <- list("lpi" = c("rid",
                                "PrimaryKey",
                                "DBKey",
@@ -371,7 +371,7 @@ fetch_ldc <- function(keys,
                                current_key_type = key_type,
                                FUN = function(X, current_data_source, current_key_type){
                                  # Build the query
-                                 query <- paste0("https://napi.landscapedatacommons.org/api/v1/",
+                                 query <- paste0("https://api.landscapedatacommons.org/api/v1/",
                                                  current_data_source, "?",
                                                  current_key_type, "=",
                                                  X)
