@@ -3,6 +3,7 @@ library(ggplot2)
 library(dplyr)
 library(httr)
 library(stringr)
+library(sf)
 source("functions.R")
 
 # Define UI for application that draws a histogram
@@ -61,23 +62,38 @@ ui <- fluidPage(
     sidebarPanel(
       radioButtons(inputId = "data_source",
                    label = "Data source",
-                   choices = c("Upload" = "upload", "Query Landscape Data Commons" = "ldc")),
+                   choices = c("Query Landscape Data Commons" = "ldc",
+                               "Upload" = "upload")),
       conditionalPanel(condition = "input.data_source == 'upload'",
                        fileInput(inputId = "raw_data",
                                  label = "Data CSV",
                                  multiple = FALSE,
                                  accept = "CSV")),
       conditionalPanel(condition = "input.data_source == 'ldc'",
-                       selectInput(inputId = "key_type",
+                       selectInput(inputId = "search_type",
                                    label = "LDC search type",
-                                   choices = c("By ecological site" = "EcologicalSiteID",
+                                   choices = c("Spatial" = "spatial",
+                                               "By ecological site" = "EcologicalSiteID",
                                                "By PrimaryKey" = "PrimaryKey",
                                                "By ProjectKey" = "ProjectKey"),
                                    selected = "ecosite"),
-                       textInput(inputId = "keys",
-                                 label = "Search values",
-                                 value = "",
-                                 placeholder = "R042XB012NM"),
+                       conditionalPanel(condition = "input.search_type != 'spatial'",
+                                        textInput(inputId = "keys",
+                                                  label = "Search values",
+                                                  value = "",
+                                                  placeholder = "R042XB012NM")),
+                       conditionalPanel(condition = "input.search_type == 'spatial'",
+                                        fileInput(inputId = "polygons",
+                                                  label = "Polygons ZIP file",
+                                                  multiple = FALSE,
+                                                  accept = ".zip"),
+                                        selectInput(inputId = "polygons_layer",
+                                                    label = "Polygons name",
+                                                    choices = c(""),
+                                                    selected = ""),
+                                        checkboxInput(inputId = "repair_polygons",
+                                                      label = "Repair polygons",
+                                                      value = FALSE)),
                        actionButton(inputId = "fetch_data",
                                     label = "Fetch data")),
       
@@ -417,12 +433,22 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
+  ##### Intialization #####
+  # Allow for wonking big files
+  options(shiny.maxRequestSize = 30 * 1024^2)
+  
+  # This is dangerous, but I'm doing it anyway so that polygons work consistently
+  sf::sf_use_s2(FALSE)
   
   # Create a workspace list to store objects and values in
   workspace <- reactiveValues(placeholder = TRUE,
                               temp_directory = tempdir(),
                               original_directory = getwd(),
                               quantiles = c(0.25, 0.5, 0.75),
+                              mapping_header_sf = NULL,
+                              mapping_polygons = NULL,
+                              header_sf = NULL,
+                              headers = NULL,
                               # The color palette for the figures
                               # palette = c("#f5bb57ff",
                               #             "#f8674cff",
@@ -458,6 +484,183 @@ server <- function(input, output, session) {
                                                      stringsAsFactors = FALSE)
                })
   
+  ##### Polygon upload handling #####
+  # When input$polygons updates, look at its filepath and read in the CSV
+  observeEvent(eventExpr = input$polygons,
+               handlerExpr = {
+                 message("Polygons file uploaded")
+                 # Because it looks like I can't enforce filetype in the upload
+                 # selection dialogue, check it here
+                 # I'm assuming that a file extension can be 1-5 characters long
+                 # although the longest I've seen is 4, I think
+                 polygon_upload_extension <- toupper(stringr::str_extract(string = input$polygons$datapath,
+                                                                          pattern = "(?<=\\.).{1,5}$"))
+                 polygons_are_zip <- polygon_upload_extension == "ZIP"
+                 
+                 if (!polygons_are_zip) {
+                   showNotification(ui = "Polygons must be uploaded as a zipped shapefile or zipped geodatabase.",
+                                    duration = NULL,
+                                    closeButton = TRUE,
+                                    id = "polygons_zip_error",
+                                    type = "error")
+                 } else {
+                   message("Attempting to unzip file")
+                   # Unzip with an OS-specific system call
+                   # Setting the working directory
+                   setwd(dirname(input$polygons$datapath))
+                   # Passing this to the OS
+                   system(sprintf("cd %s", dirname(input$polygons$datapath)))
+                   # Just checking for debugging
+                   message(getwd())
+                   # The unzipping argument to pass to the OS
+                   system(sprintf("unzip -u %s", input$polygons$datapath))
+                   # Set the working directory back
+                   setwd(workspace$original_directory)
+                   
+                   message("File unzipped")
+                   # Get the shapefile name
+                   extracted_files <- list.files(dirname(input$polygons$datapath),
+                                                 full.names = TRUE)
+                   
+                   # Look for extracted shapefiles
+                   shp_indices <- grepl(extracted_files,
+                                        pattern = "\\.shp$",
+                                        ignore.case = TRUE)
+                   message(paste0("Found ",
+                                  sum(shp_indices),
+                                  " shapefiles"))
+                   upload_has_shp <- any(shp_indices)
+                   
+                   # Look for extracted geodatabases
+                   gdb_indices <- grepl(extracted_files,
+                                        pattern = "\\.gdb$",
+                                        ignore.case = TRUE)
+                   message(paste0("Found ",
+                                  sum(gdb_indices),
+                                  " geodatabases"))
+                   upload_has_gdb <- any(gdb_indices)
+                   
+                   # Prioritize geodatabases
+                   if (upload_has_gdb) {
+                     workspace$polygon_filetype <- "gdb"
+                     message("Working from extracted geodatabase")
+                     # If there's more than one geodatabase, just use the first
+                     # but warn the user
+                     if (sum(gdb_indices) > 1) {
+                       message("Multiple GDBs detected. Using 'first' one")
+                       showNotification(ui = "More than one geodatabase found. Please upload one at a time.",
+                                        duration = NULL,
+                                        closeButton = TRUE,
+                                        type = "warning",
+                                        id = "multiple_gdb_warning")
+                       current_gdb_path <- extracted_files[gdb_indices][1]
+                     } else {
+                       message("Only one GDB to work with")
+                       current_gdb_path <- extracted_files[gdb_indices]
+                     }
+                     # So I can reference this when reading in layers later
+                     workspace$gdb_filepath <- current_gdb_path
+                     # Find which layers are available
+                     available_polygons <- sf::st_layers(dsn = current_gdb_path)$name
+                     message(paste0("Available layers in GDB are: ",
+                                    paste(available_polygons,
+                                          collapse = ", ")))
+                     message("Updating selectInput(inputId = 'polygons_layer')")
+                     # Update the selection options
+                     updateSelectInput(session = session,
+                                       inputId = "polygons_layer",
+                                       choices = available_polygons,
+                                       selected = available_polygons[1])
+                   } else if (upload_has_shp) {
+                     workspace$polygon_filetype <- "shp"
+                     message("Working with extracted shapefile(s)")
+                     # Which files end in .shp?
+                     available_polygons <- extracted_files[shp_indices]
+                     
+                     message(paste0("Before checking for all files, the available shapefiles are: ",
+                                    paste(basename(available_polygons),
+                                          collapse = ", ")))
+                     
+                     # And which of those .shp files has associated
+                     # .prj, .dbf, and .shx files?
+                     has_all_files <- sapply(X = available_polygons,
+                                             files = extracted_files,
+                                             FUN = function(X, files) {
+                                               required_filetypes <- c("dbf",
+                                                                       "prj",
+                                                                       "shp",
+                                                                       "shx")
+                                               file_pattern <- gsub(x = X,
+                                                                    pattern = "shp$",
+                                                                    replacement = "",
+                                                                    ignore.case = TRUE)
+                                               all(sapply(X = required_filetypes,
+                                                          files = files,
+                                                          file_pattern = file_pattern,
+                                                          FUN = function(X, files, file_pattern) {
+                                                            paste0(file_pattern,
+                                                                   X) %in% files
+                                                          }))
+                                             })
+                     # So then which shapefiles are really valid?
+                     available_polygons <- available_polygons[has_all_files]
+                     message(paste0("After checking for all files, the available shapefiles are: ",
+                                    paste(basename(available_polygons),
+                                          collapse = ", ")))
+                     
+                     # Update the selection options
+                     # This makes a named vector of the shp filepaths
+                     # so it's easy to read them in later but the options are
+                     # human readable in the GUI
+                     polygon_shp_options <- available_polygons
+                     shp_filenames <- gsub(x = basename(available_polygons),
+                                           pattern = "\\.shp$",
+                                           replacement = "",
+                                           ignore.case = TRUE)
+                     names(available_polygons) <- shp_filenames
+                     updateSelectInput(session = session,
+                                       inputId = "polygons_layer",
+                                       choices = available_polygons,
+                                       selected = available_polygons[1])
+                   } else {
+                     showNotification(ui = "Uploaded file does not appear to contain either a valid shapefile or geodatabase.",
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      type = "error",
+                                      id = "empty_upload_error")
+                   }
+                 }
+               })
+  
+  #### Mapping freshly uploaded polygons ####
+  observeEvent(eventExpr = {input$polygons_layer},
+               handlerExpr = {
+                 message("input$polygons_layer has updated")
+                 if (input$polygons_layer != "") {
+                   message("Reading in polygons")
+                   if (workspace$polygon_filetype == "gdb") {
+                     workspace$mapping_polygons <- sf::st_read(dsn = workspace$gdb_filepath,
+                                                               layer = input$polygons_layer)
+                   } else if (workspace$polygon_filetype == "shp") {
+                     workspace$mapping_polygons <- sf::st_read(dsn = input$polygons_layer)
+                   }
+                   message("Making sure the polygons are in NAD83")
+                   workspace$mapping_polygons <- sf::st_transform(workspace$mapping_polygons,
+                                                                  crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                   
+                   # If they've asked us to "repair" polygons, buffer by 0
+                   if (input$repair_polygons) {
+                     message("Attempting to repair polygons by buffering by 0")
+                     workspace$mapping_polygons <- sf::st_buffer(x = workspace$mapping_polygons,
+                                                                 dist = 0)
+                   }
+                 }
+                 # message("Jumping to map tab")
+                 # updateTabsetPanel(session = session,
+                 #                   inputId = "maintabs",
+                 #                   selected = "Map")
+               })
+  
   #### When someone fetches data from the Landscape Data Commons, do this ####
   observeEvent(eventExpr = input$fetch_data,
                handlerExpr = {
@@ -473,7 +676,183 @@ server <- function(input, output, session) {
                  message("Data source set to LDC")
                  
                  # Only do anything if there's at least one key
-                 if (input$keys != "") {
+                 if (input$search_type == "spatial") {
+                   if (input$polygons_layer == "") {
+                     showNotification(ui = "Please upload and select polygons.",
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      type = "warning",
+                                      id = "no_polygons_yet_warning")
+                   } else {
+                     message("Attempting to query spatially")
+                     message("Reading in polygons")
+                     if (workspace$polygon_filetype == "gdb") {
+                       workspace$polygons <- sf::st_read(dsn = workspace$gdb_filepath,
+                                                         layer = input$polygons_layer)
+                     } else if (workspace$polygon_filetype == "shp") {
+                       workspace$polygons <- sf::st_read(dsn = input$polygons_layer)
+                     }
+                     message("Making sure the polygons are in NAD83")
+                     workspace$polygons <- sf::st_transform(workspace$polygons,
+                                                            crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                     
+                     # If they've asked us to "repair" polygons, buffer by 0
+                     if (input$repair_polygons) {
+                       message("Attempting to repair polygons by buffering by 0")
+                       workspace$polygons <- sf::st_buffer(x = workspace$polygons,
+                                                           dist = 0)
+                     }
+                     message(paste0("Number of individual polygons in workspace$polygons is ",
+                                    nrow(workspace$polygons)))
+                     message("Adding unique_id variable to workspace$polygons")
+                     workspace$polygons[["unique_id"]] <- 1:nrow(workspace$polygons)
+                     
+                     # For mapping purposes
+                     message("Updating workspace$mapping_polygons")
+                     workspace$mapping_polygons <- workspace$polygons
+                     
+                     if (is.null(workspace$headers)) {
+                       message("Retrieving headers")
+                       workspace$headers <- tryCatch(fetch_ldc(keys = NULL,
+                                                               key_type = NULL,
+                                                               data_type = "header",
+                                                               verbose = TRUE),
+                                                     error = function(error){
+                                                       gsub(x = error,
+                                                            pattern = "^Error.+[ ]:[ ]",
+                                                            replacement = "")
+                                                     })
+                       message(paste0("class(workspace$headers) is ",
+                                      paste(class(workspace$headers),
+                                            collapse = ", ")))
+                     }
+                     
+                     current_headers <- workspace$headers
+                     
+                     
+                     # If there was an API error, display that
+                     if ("character" %in% class(current_headers)) {
+                       results <- NULL
+                       showNotification(ui = paste0("API error retrieving headers for spatial query: ",
+                                                    current_headers),
+                                        duration = NULL,
+                                        closeButton = TRUE,
+                                        id = "headers_for_sf_error",
+                                        type = "error")
+                     } else {
+                       # If there was no error, proceed
+                       message("Converting header info to sf object")
+                       current_headers_sf <- sf::st_as_sf(x = current_headers,
+                                                          coords = c("Longitude_NAD83",
+                                                                     "Latitude_NAD83"),
+                                                          crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                       
+                       # This'll be useful so I can make a map, if that feature is added
+                       workspace$header_sf <- current_headers_sf
+                       workspace$mapping_header_sf <- current_headers_sf
+                       
+                       message("Performing sf_intersection()")
+                       points_polygons_intersection <- tryCatch(sf::st_intersection(x = current_headers_sf[, "PrimaryKey"],
+                                                                                    y = sf::st_transform(workspace$polygons[, "unique_id"],
+                                                                                                         crs = sf::st_crs(current_headers_sf))),
+                                                                error = function(error){"There was a geoprocessing error. Please try using the 'repair polygons' option."})
+                       
+                       if ("character" %in% class(points_polygons_intersection)) {
+                         showNotification(ui = points_polygons_intersection,
+                                          duration = NULL,
+                                          closeButton = TRUE,
+                                          type = "error",
+                                          id = "intersection_error")
+                       } else {
+                         current_primary_keys <- unique(points_polygons_intersection$PrimaryKey)
+                         
+                         if (length(current_primary_keys) < 1) {
+                           message("No data were found")
+                           showNotification(ui = paste0("No data were found within your polygons."),
+                                            duration = NULL,
+                                            closeButton = TRUE,
+                                            id = "no_overlap",
+                                            type = "warning")
+                           results <- NULL
+                         } else {
+                           message(paste0(length(current_primary_keys), " primary keys found. Querying now."))
+                           
+                           message("Retrieving data using PrimaryKey values from spatial intersection")
+                           results <- tryCatch(fetch_ldc(keys = current_primary_keys,
+                                                         key_type = "PrimaryKey",
+                                                         data_type = "indicators",
+                                                         key_chunk_size = 100,
+                                                         verbose = TRUE),
+                                               error = function(error){
+                                                 gsub(x = error,
+                                                      pattern = "^Error.+[ ]:[ ]",
+                                                      replacement = "")
+                                               })
+                           message("Querying by primary key complete.")
+                           message(paste0("Number of records retrieved: ",
+                                          length(results)))
+                         }
+                         
+                         # Only keep going if there are results!!!!
+                         if (length(results) > 0 & "data.frame" %in% class(results)) {
+                           message("Making workspace$mapping_header_sf")
+                           workspace$mapping_header_sf <- current_headers_sf[current_headers_sf$PrimaryKey %in% results$PrimaryKey,]
+                           
+                           message("Coercing variables to numeric.")
+                           # Convert from character to numeric variables where possible
+                           data_corrected <- lapply(X = names(results),
+                                                    data = results,
+                                                    FUN = function(X, data){
+                                                      # Get the current variable values as a vector
+                                                      vector <- data[[X]]
+                                                      # Try to coerce into numeric
+                                                      numeric_vector <- as.numeric(vector)
+                                                      # If that works without introducing NAs, return the numeric vector
+                                                      # Otherwise, return the original character vector
+                                                      if (all(!is.na(numeric_vector))) {
+                                                        return(numeric_vector)
+                                                      } else {
+                                                        return(vector)
+                                                      }
+                                                    })
+                           
+                           # From some reason co.call(cbind, data_corrected) was returning a list not a data frame
+                           # so I'm resorting to using dplyr
+                           data <- dplyr::bind_cols(data_corrected)
+                           # Correct the names of the variables
+                           names(data) <- names(results)
+                           
+                           # Put it in the workspace list
+                           message("Setting data_fresh to TRUE because we just downloaded it")
+                           workspace$data_fresh <- TRUE
+                           workspace$raw_data <- data
+                         } else if (length(results) == 0) {
+                           message("No records found for those PrimaryKeys")
+                           if (length(current_primary_keys) > 0) {
+                             no_data_spatial_error_message <- paste0("Although sampling locations were found within your polygons, they did not have associated data of the type requested.")
+                           } else {
+                             no_data_spatial_error_message <- paste0("No sampling locations were found within your polygons.")
+                           }
+                           showNotification(ui = paste0(no_data_spatial_error_message,
+                                                        results),
+                                            duration = NULL,
+                                            closeButton = TRUE,
+                                            id = "no_data_spatial_error",
+                                            type = "error")
+                           workspace$raw_data <- NULL
+                         } else {
+                           showNotification(ui = paste0("API error retrieving data based on spatial query: ",
+                                                        results),
+                                            duration = NULL,
+                                            closeButton = TRUE,
+                                            id = "primarykey_spatial_error",
+                                            type = "error")
+                           workspace$raw_data <- NULL
+                         }
+                       }
+                     }
+                   }
+                 } else if (input$keys != "") {
                    # Handle multiple requested ecosites at once!
                    current_key_vector <- stringr::str_split(string = input$keys,
                                                             pattern = ",",
@@ -491,11 +870,11 @@ server <- function(input, output, session) {
                    
                    # The API queryable tables don't include ecosite, so we grab
                    # the header table and get primary keys from that
-                   if (input$key_type == "EcologicalSiteID") {
-                     message("key_type is EcologicalSiteID")
+                   if (input$search_type == "EcologicalSiteID") {
+                     message("search_type is EcologicalSiteID")
                      message("Retrieving headers")
                      current_headers <- tryCatch(fetch_ldc(keys = current_key_string,
-                                                           key_type = input$key_type,
+                                                           key_type = input$search_type,
                                                            data_type = "header",
                                                            verbose = TRUE),
                                                  error = function(error){
@@ -542,8 +921,8 @@ server <- function(input, output, session) {
                                                   replacement = "")
                                            })
                      }
-                   } else {
-                     message("key_type is not EcologicalSiteID")
+                   } else if (input$search_type != "spatial") {
+                     message("search_type is not EcologicalSiteID or spatial")
                      message("Retrieving data using provided keys")
                      current_key_chunk_count <- ceiling(length(current_key_vector) / 100)
                      
@@ -560,7 +939,7 @@ server <- function(input, output, session) {
                                                    })
                      
                      results <- tryCatch(fetch_ldc(keys = current_keys_chunks,
-                                                   key_type = input$key_type,
+                                                   key_type = input$search_type,
                                                    data_type = "indicators",
                                                    verbose = TRUE),
                                          error = function(error){
@@ -590,14 +969,14 @@ server <- function(input, output, session) {
                      workspace$missing_keys <- NULL
                    } else {
                      message("Determining if keys are missing.")
-                     message(paste0("input$key_type is: ",
-                                    paste(input$key_type,
+                     message(paste0("input$search_type is: ",
+                                    paste(input$search_type,
                                           collapse = ", ")))
                      # Because ecosites were two-stage, we check in with headers
-                     if (input$key_type %in% c("EcologicalSiteID")) {
-                       workspace$queried_keys <- unique(current_headers[[input$key_type]])
-                     } else {
-                       workspace$queried_keys <- unique(results[[input$key_type]])
+                     if (input$search_type %in% c("EcologicalSiteID")) {
+                       workspace$queried_keys <- unique(current_headers[[input$search_type]])
+                     } else if (input$search_type != "spatial") {
+                       workspace$queried_keys <- unique(results[[input$search_type]])
                      }
                      
                      workspace$missing_keys <- current_key_vector[!(current_key_vector %in% workspace$queried_keys)]
@@ -658,6 +1037,12 @@ server <- function(input, output, session) {
                    message("Data are from the LDC and include header info. Setting workspace$headers to NULL.")
                    workspace$headers <- NULL
                    
+                 } else {
+                   showNotification(ui = "Please provide key values to search with.",
+                                    duration = NULL,
+                                    closeButton = TRUE,
+                                    id = "no_keys_warning",
+                                    type = "warning")
                  }
                  removeNotification(id = "downloading")
                })
