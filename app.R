@@ -4,6 +4,7 @@ library(dplyr)
 library(httr)
 library(stringr)
 library(sf)
+library(leaflet)
 source("functions.R")
 
 # Define UI for application that draws a histogram
@@ -424,7 +425,10 @@ ui <- fluidPage(
                            plotOutput("timeseries_plot"),
                            textOutput("timeseries_summary")),
                   tabPanel(title = "Data",
-                           dataTableOutput("data_table")))
+                           dataTableOutput("data_table")),
+                  tabPanel(title = "Map",
+                           leaflet::leafletOutput(outputId = "map",
+                                                  height = "80vh")))
       # tableOutput("data_table")))
       
     )
@@ -871,6 +875,7 @@ server <- function(input, output, session) {
                    # The API queryable tables don't include ecosite, so we grab
                    # the header table and get primary keys from that
                    if (input$search_type == "EcologicalSiteID") {
+                     workspace$mapping_polygons <- NULL
                      message("search_type is EcologicalSiteID")
                      message("Retrieving headers")
                      current_headers <- tryCatch(fetch_ldc(keys = current_key_string,
@@ -893,6 +898,15 @@ server <- function(input, output, session) {
                                         id = "api_headers_error")
                        results <- NULL
                      } else {
+                       message("Converting header info to sf object")
+                       current_headers_sf <- sf::st_as_sf(x = current_headers,
+                                                          coords = c("Longitude_NAD83",
+                                                                     "Latitude_NAD83"),
+                                                          crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                       
+                       # This'll be useful so I can make a map, if that feature is added
+                       workspace$mapping_header_sf <- current_headers_sf
+                       
                        current_primary_keys <- current_headers$PrimaryKey
                        
                        current_key_chunk_count <- ceiling(length(current_primary_keys) / 100)
@@ -922,6 +936,7 @@ server <- function(input, output, session) {
                                            })
                      }
                    } else if (input$search_type != "spatial") {
+                     workspace$mapping_polygons <- NULL
                      message("search_type is not EcologicalSiteID or spatial")
                      message("Retrieving data using provided keys")
                      current_key_chunk_count <- ceiling(length(current_key_vector) / 100)
@@ -968,6 +983,7 @@ server <- function(input, output, session) {
                                       id = "api_error")
                      workspace$missing_keys <- NULL
                    } else {
+                     message("There are results!")
                      message("Determining if keys are missing.")
                      message(paste0("input$search_type is: ",
                                     paste(input$search_type,
@@ -1030,12 +1046,38 @@ server <- function(input, output, session) {
                      message("Setting data_fresh to TRUE because we just downloaded it")
                      workspace$data_fresh <- TRUE
                      workspace$raw_data <- data
+                     
+                     message("Attempting to make workspace$header_sf")
+                     if (is.null(workspace$headers)) {
+                       message("Retrieving headers")
+                       workspace$headers <- tryCatch(fetch_ldc(keys = NULL,
+                                                               key_type = NULL,
+                                                               data_type = "header",
+                                                               verbose = TRUE),
+                                                     error = function(error){
+                                                       gsub(x = error,
+                                                            pattern = "^Error.+[ ]:[ ]",
+                                                            replacement = "")
+                                                     })
+                       message(paste0("class(workspace$headers) is ",
+                                      paste(class(workspace$headers),
+                                            collapse = ", ")))
+                     }
+                     
+                     message("Converting header info to sf object")
+                     message(paste("workspace$headers variables are: ",
+                                   paste0(names(workspace$headers),
+                                          collapse = ", ")))
+                     current_headers_sf <- sf::st_as_sf(x = workspace$headers[workspace$headers[["PrimaryKey"]] %in% workspace$raw_data[["PrimaryKey"]], ],
+                                                        coords = c("Longitude_NAD83",
+                                                                   "Latitude_NAD83"),
+                                                        crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                     
+                     # This'll be useful so I can make a map, if that feature is added
+                     workspace$mapping_header_sf <- current_headers_sf
                    } else {
                      workspace$raw_data <- NULL
                    }
-                   
-                   message("Data are from the LDC and include header info. Setting workspace$headers to NULL.")
-                   workspace$headers <- NULL
                    
                  } else {
                    showNotification(ui = "Please provide key values to search with.",
@@ -1889,6 +1931,53 @@ server <- function(input, output, session) {
     content = function(file) {
       file.copy(paste0(workspace$temp_directory, "/plots.zip"), file)
     })
+  
+  ##### When mapping elements update #####
+  observeEvent(eventExpr = list(workspace$mapping_header_sf,
+                                workspace$mapping_polygons),
+               handlerExpr = {
+                 message("Initializing a fresh map")
+                 # Initialize the map
+                 map <- leaflet::leaflet()
+                 
+                 # Add some basic info
+                 map <- leaflet::addTiles(map = map)
+                 
+                 # Add the polygons
+                 message("Checking to see if !is.null(workspace$mapping_polygons)")
+                 if (!is.null(workspace$mapping_polygons)) {
+                   message("!is.null(workspace$mapping_polygons) was TRUE")
+                   # Note that we have to manually remove Z dimensions with sf::st_zm()
+                   # otherwise if there's a Z dimension this fails with an
+                   # inscrutable error.
+                   map <- leaflet::addPolygons(map = map,
+                                               data = sf::st_transform(x = sf::st_zm(workspace$mapping_polygons),
+                                                                       crs = "+proj=longlat +datum=WGS84"),
+                                               fillColor = "coral",
+                                               stroke = FALSE,
+                                               fillOpacity = 0.5)
+                 }
+                 
+                 # Add in the retrieved points
+                 message("Checking to see if !is.null(workspace$mapping_header_sf)")
+                 if (!is.null(workspace$mapping_header_sf)) {
+                   message("!is.null(workspace$mapping_header_sf) was TRUE")
+                   map <- leaflet::addCircleMarkers(map = map,
+                                                    data = sf::st_transform(x = workspace$mapping_header_sf,
+                                                                            crs = "+proj=longlat +datum=WGS84"),
+                                                    stroke = TRUE,
+                                                    opacity = 0.9,
+                                                    color = "white",
+                                                    weight = 1,
+                                                    fillColor = "gray20",
+                                                    fillOpacity = 1,
+                                                    radius = 3)
+                 }
+                 
+                 message("Rendering map")
+                 output$map <- leaflet::renderLeaflet(map)
+                 message("Map rendered")
+               })
 }
 
 # Run the application 
