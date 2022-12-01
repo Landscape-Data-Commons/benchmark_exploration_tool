@@ -1891,7 +1891,7 @@ server <- function(input, output, session) {
                    files_to_zip <- list.files(path = workspace$temp_directory,
                                               pattern = "\\.(png|txt|csv)$",
                                               ignore.case = TRUE,
-                                              full.names = TRUE)
+                                              full.names = FALSE)
                    
                    message("Preparing to zip up the following files:")
                    message(paste0(files_to_zip,
@@ -1900,12 +1900,14 @@ server <- function(input, output, session) {
                    
                    switch(Sys.info()[["sysname"]],
                           Windows = {
+                            message("This is a Windows system. Using 7zip.")
                             system(paste0("cmd.exe /c \"C:\\Program Files\\7-Zip\\7z\".exe a -tzip plots.zip ",
                                           paste(files_to_zip,
                                                 collapse = " ")))
                           },
                           Linux = {
-                            system(paste("zip plots %s",
+                            message("This is a Unix system. Using zip.")
+                            system(paste("zip -D plots %s",
                                          paste(files_to_zip,
                                                collapse = " ")))
                           })
