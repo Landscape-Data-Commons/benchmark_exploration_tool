@@ -37,3 +37,5 @@ If you use your current data, you must specify the variable in the data which is
 
 ### Optional: Plot yearly time series
 This option will produce a boxplot of the distribution of values for the current indicator for each year occurring in the data. You must specify the variable containing the dates associated with the data and the format of the dates. If you are unsure what format your dates are in, check the "Data" tab to see.
+
+For further help or to report bugs, please email [Nelson Stauffer](mailto:nelson.stauffer@usda.gov).
