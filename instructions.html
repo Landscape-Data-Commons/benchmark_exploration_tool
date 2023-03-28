@@ -14,17 +14,30 @@
 
 <title>instructions.knit</title>
 
-<script src="data:application/javascript;base64,Ly8gUGFuZG9jIDIuOSBhZGRzIGF0dHJpYnV0ZXMgb24gYm90aCBoZWFkZXIgYW5kIGRpdi4gV2UgcmVtb3ZlIHRoZSBmb3JtZXIgKHRvCi8vIGJlIGNvbXBhdGlibGUgd2l0aCB0aGUgYmVoYXZpb3Igb2YgUGFuZG9jIDwgMi44KS4KZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsIGZ1bmN0aW9uKGUpIHsKICB2YXIgaHMgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCJkaXYuc2VjdGlvbltjbGFzcyo9J2xldmVsJ10gPiA6Zmlyc3QtY2hpbGQiKTsKICB2YXIgaSwgaCwgYTsKICBmb3IgKGkgPSAwOyBpIDwgaHMubGVuZ3RoOyBpKyspIHsKICAgIGggPSBoc1tpXTsKICAgIGlmICghL15oWzEtNl0kL2kudGVzdChoLnRhZ05hbWUpKSBjb250aW51ZTsgIC8vIGl0IHNob3VsZCBiZSBhIGhlYWRlciBoMS1oNgogICAgYSA9IGguYXR0cmlidXRlczsKICAgIHdoaWxlIChhLmxlbmd0aCA+IDApIGgucmVtb3ZlQXR0cmlidXRlKGFbMF0ubmFtZSk7CiAgfQp9KTsK"></script>
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
 
 <style type="text/css">
-  code{white-space: pre-wrap;}
-  span.smallcaps{font-variant: small-caps;}
-  span.underline{text-decoration: underline;}
-  div.column{display: inline-block; vertical-align: top; width: 50%;}
-  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-  ul.task-list{list-style: none;}
-      .display.math{display: block; text-align: center; margin: 0.5rem auto;}
-  </style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+
 
 
 
@@ -47,39 +60,95 @@
 
 <div id="upload-your-data-or-query-the-landscape-data-commons" class="section level3">
 <h3>1) Upload your data or query the Landscape Data Commons</h3>
-<p>You can either query data from the Landscape Data Commons with an ecological site ID (search for ecological sites on <a href="https://edit.jornada.nmsu.edu">EDIT</a>) <em>or</em> upload a .CSV (comma-separated values) file containing any data in a tidy format, i.e., every row is an observation/plot and every column contains the values for a different numeric indicator or measure. This is the default format for the Terrestrial AIM Database (TerrADat) which can by accessed by Department of Interior employees <a href="https://aim.landscapetoolbox.org/aim-data-portal">here</a> and everyone else <a href="https://landscape.blm.gov/geoportal/catalog/main/home.page">here</a>.</p>
-<p>Note that once data are uploaded, there is no way to subset or filter them so you should only upload data that you know you want included in your plots.</p>
+<p>You can either query data from the Landscape Data Commons with an
+ecological site ID (search for ecological sites on <a href="https://edit.jornada.nmsu.edu">EDIT</a>) <em>or</em> upload a .CSV
+(comma-separated values) file containing any data in a tidy format,
+i.e., every row is an observation/plot and every column contains the
+values for a different numeric indicator or measure. This is the default
+format for the Terrestrial AIM Database (TerrADat) which can by accessed
+by Department of Interior employees <a href="https://aim.landscapetoolbox.org/aim-data-portal">here</a> and
+everyone else <a href="https://landscape.blm.gov/geoportal/catalog/main/home.page">here</a>.</p>
+<p>Note that once data are uploaded, there is no way to subset or filter
+them so you should only upload data that you know you want included in
+your plots.</p>
 </div>
 <div id="identify-non-data-variables" class="section level3">
 <h3>2) Identify non-data variables</h3>
-<p>In the dropdown, select all the variables that contain identifying information rather than data that might be evaluated. This includes any unique identifying variables (e.g., plot keys, plot names) and other metadata (e.g., data collector name, coordinates, dates, etc.). These will be included in the output you can download once you’ve plotted your data and will be excluded from the list of potential data variables to select from.</p>
+<p>In the dropdown, select all the variables that contain identifying
+information rather than data that might be evaluated. This includes any
+unique identifying variables (e.g., plot keys, plot names) and other
+metadata (e.g., data collector name, coordinates, dates, etc.). These
+will be included in the output you can download once you’ve plotted your
+data and will be excluded from the list of potential data variables to
+select from.</p>
 </div>
 <div id="select-the-indicatorvariable-to-plot" class="section level3">
 <h3>3) Select the indicator/variable to plot</h3>
-<p>In the dropdown, select which variable or indicator you want to plot. The available options will be all the column names that contained data that could be numeric. Be aware, this may include nonsense options like the unique identifying field, e.g., “ObjectID”.</p>
+<p>In the dropdown, select which variable or indicator you want to plot.
+The available options will be all the column names that contained data
+that could be numeric. Be aware, this may include nonsense options like
+the unique identifying field, e.g., “ObjectID”.</p>
 </div>
 <div id="decide-your-indicatorvariable-label" class="section level3">
 <h3>4) Decide your indicator/variable label</h3>
-<p>By default, the variable label will be the same as the variable name. It may make sense to change the label to be clearer or more human-friendly, e.g. changing “Foliar.Cover.Pct” to “Foliar cover (%)”.</p>
+<p>By default, the variable label will be the same as the variable name.
+It may make sense to change the label to be clearer or more
+human-friendly, e.g. changing “Foliar.Cover.Pct” to “Foliar cover
+(%)”.</p>
 </div>
 <div id="select-the-plot-type" class="section level3">
 <h3>5) Select the plot type</h3>
-<p>If you select box plots, then the figures generated will be box plots broken into quartiles (at 25%, 50%, and 75%) combined with a scatterplot showing the distribution of values.</p>
-<p>If you select histograms, then the figures generated will be histograms showing the distribution of values. When plotting histograms, you may manually set the quantiles which will be visualized with color and vertical lines representing the breakpoints. As an example, entering “33, 67” will result in showing the value for the variable below which 33% percent of observations fall and the value of the variable below which 67% of the observations fall. The percentages entered must be numbers between 0 and 100 separated by commas. If your entry is invalid, the figure will default to showing the 50% break.</p>
+<p>If you select box plots, then the figures generated will be box plots
+broken into quartiles (at 25%, 50%, and 75%) combined with a scatterplot
+showing the distribution of values.</p>
+<p>If you select histograms, then the figures generated will be
+histograms showing the distribution of values. When plotting histograms,
+you may manually set the quantiles which will be visualized with color
+and vertical lines representing the breakpoints. As an example, entering
+“33, 67” will result in showing the value for the variable below which
+33% percent of observations fall and the value of the variable below
+which 67% of the observations fall. The percentages entered must be
+numbers between 0 and 100 separated by commas. If your entry is invalid,
+the figure will default to showing the 50% break.</p>
 </div>
 <div id="optional-apply-benchmarks" class="section level3">
 <h3>Optional: Apply benchmarks</h3>
-<p>A benchmark is an inequality against which all the values will be compared. The figure will show the distribution of values as a box plot or histogram with color coded according to which benchmark categories the observations qualify for.</p>
-<p>In the “Benchmark ranges” tab, each benchmark category requires a lower limit, the relationship to the lower limit, an upper limit, and a relationship to that upper limit. For example, if the category “Meeting” management goals would be true if the percentage of bare soil is below 25%, then the lower limit and relationship would be 0% &lt;= x and the upper limit and relationship would be x &lt; 25%; the corresponding “Not Meeting” range would be 25% &lt;= x and x &lt;= 100. A benchmark category can have multiple ranges entered on separate rows. Any data that do not qualify for any of the defined benchmark categories will be treated as belonging to the category “Undefined”. The categories are evaluated in descending order, so it is possible to have overlapping category ranges, but the last category that a data point qualified for is the one that it will be assigned to.</p>
+<p>A benchmark is an inequality against which all the values will be
+compared. The figure will show the distribution of values as a box plot
+or histogram with color coded according to which benchmark categories
+the observations qualify for.</p>
+<p>In the “Benchmark ranges” tab, each benchmark category requires a
+lower limit, the relationship to the lower limit, an upper limit, and a
+relationship to that upper limit. For example, if the category “Meeting”
+management goals would be true if the percentage of bare soil is below
+25%, then the lower limit and relationship would be 0% &lt;= x and the
+upper limit and relationship would be x &lt; 25%; the corresponding “Not
+Meeting” range would be 25% &lt;= x and x &lt;= 100. A benchmark
+category can have multiple ranges entered on separate rows. Any data
+that do not qualify for any of the defined benchmark categories will be
+treated as belonging to the category “Undefined”. The categories are
+evaluated in descending order, so it is possible to have overlapping
+category ranges, but the last category that a data point qualified for
+is the one that it will be assigned to.</p>
 </div>
 <div id="optional-mark-comparison-values-on-figures" class="section level3">
 <h3>Optional: Mark comparison values on figure(s)</h3>
-<p>You may want to include a visual indication of a specific value or values on your figures for reference. This can be done by specifying a value manually <em>or</em> using values from your data.</p>
-<p>If you use your current data, you must specify the variable in the data which is unique for each observation (e.g., a plot key) and then you may choose one of the IDs in that variable to draw your values from. The value used will be for the indicator you are currently plotting.</p>
+<p>You may want to include a visual indication of a specific value or
+values on your figures for reference. This can be done by specifying a
+value manually <em>or</em> using values from your data.</p>
+<p>If you use your current data, you must specify the variable in the
+data which is unique for each observation (e.g., a plot key) and then
+you may choose one of the IDs in that variable to draw your values from.
+The value used will be for the indicator you are currently plotting.</p>
 </div>
 <div id="optional-plot-yearly-time-series" class="section level3">
 <h3>Optional: Plot yearly time series</h3>
-<p>This option will produce a boxplot of the distribution of values for the current indicator for each year occurring in the data. You must specify the variable containing the dates associated with the data and the format of the dates. If you are unsure what format your dates are in, check the “Data” tab to see.</p>
+<p>This option will produce a boxplot of the distribution of values for
+the current indicator for each year occurring in the data. You must
+specify the variable containing the dates associated with the data and
+the format of the dates. If you are unsure what format your dates are
+in, check the “Data” tab to see.</p>
+<p>For further help or to report bugs, please email <a href="mailto:nelson.stauffer@usda.gov">Nelson Stauffer</a>.</p>
 </div>
 
 

@@ -61,6 +61,8 @@ ui <- fluidPage(
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
     sidebarPanel(
+      helpText("Compare indicator value distributions against benchmarks."),
+      br(),
       radioButtons(inputId = "data_source",
                    label = "Data source",
                    choices = c("Query Landscape Data Commons" = "ldc",
