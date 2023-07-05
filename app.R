@@ -5,6 +5,8 @@ library(httr)
 library(stringr)
 library(sf)
 library(leaflet)
+library(leaflet.extras)
+library(shinyjs)
 source("functions.R")
 
 # Define UI for application that draws a histogram
