@@ -7,6 +7,7 @@ library(sf)
 library(leaflet)
 library(leaflet.extras)
 library(shinyjs)
+library(zip)
 source("functions.R")
 
 # Define UI
@@ -18,10 +19,10 @@ ui <- fluidPage(
     tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
     # A function that lets us create links to tabs since there's no
     # equivalent to updateTabsetPanel() like updateTabPanel() for some reason.
-    # This lets us make links with a(onclick = "fakeClick('Tab Name')")
+    # This lets us make links with a(onclick = "tabJump('Tab Name')")
     # This comes from StackOverflow, I think?
     tags$script(HTML('
-        var fakeClick = function(tabName) {
+        var tabJump = function(tabName) {
           var dropdownList = document.getElementsByTagName("a");
           for (var i = 0; i < dropdownList.length; i++) {
             var link = dropdownList[i];
@@ -136,14 +137,17 @@ ui <- fluidPage(
                           HTML("</center>"),
                         ),
                         mainPanel(
-                          uiOutput("drawing_map_ui"),
-                          uiOutput("main_map_ui"),
-                          includeHTML("instructions.html")
+                          tags$div(class = "main-panel-body",
+                                   uiOutput("drawing_map_ui"),
+                                   uiOutput("main_map_ui")#,
+                                   # includeHTML("instructions.html")
+                          )
                         )
                       )
              ),
              tabPanel(title = "Data",
                       mainPanel(width = 11,
+                                uiOutput(outputId = "data_tab_notyet_ui"),
                                 tags$div(class = "data-table",
                                          fluidRow(
                                            column(width = 12,
@@ -156,6 +160,10 @@ ui <- fluidPage(
                                       label = "Apply benchmarks",
                                       value = FALSE),
                         conditionalPanel(condition = "input.use_benchmarks",
+                                         p(class = "data-prompt",
+                                           "Once you've finished setting up your benchmark ranges, you can generate your plots in the",
+                                           a("Figures tab.",
+                                             onclick = "tabJump('Figures')")),
                                          fluidRow(column(width = 3,
                                                          selectInput(inputId = "range_count",
                                                                      label = "Number of benchmark ranges",
@@ -470,9 +478,12 @@ ui <- fluidPage(
                                          br(),
                                          actionButton(inputId = "plot_button",
                                                       label = "Plot indicator distribution!")),
-                        br(),
-                        HTML(
-                          "<div class = 'load-message'><img src = 'busy_icon_complex.svg' height = '40rem'>Working! Please wait.<img src = 'busy_icon_complex.svg' height = '40rem' transform = 'scaleX(-1)'></div>"
+                        conditionalPanel(
+                          condition = "$('html').hasClass('shiny-busy')",
+                          br(),
+                          HTML(
+                            "<div class = 'load-message'><img src = 'busy_icon_complex.svg' height = '40rem'>Working! Please wait.<img src = 'busy_icon_complex.svg' height = '40rem' transform = 'scaleX(-1)'></div>"
+                          )
                         ),
                         # Only show if there are plot images to download
                         conditionalPanel(condition = "input.plot_button >= 1",
@@ -482,12 +493,15 @@ ui <- fluidPage(
                       ),
                       mainPanel = mainPanel(
                         tabPanel(title = "Figures",
-                                 plotOutput("quantiles_plot"),
-                                 textOutput("quantile_caption"),
-                                 plotOutput("benchmark_plot"),
-                                 textOutput("benchmark_summary"),
-                                 plotOutput("timeseries_plot"),
-                                 textOutput("timeseries_summary"))
+                                 tags$div(class = "main-panel-body",
+                                          plotOutput("quantiles_plot"),
+                                          textOutput("quantile_caption"),
+                                          plotOutput("benchmark_plot"),
+                                          textOutput("benchmark_summary"),
+                                          plotOutput("timeseries_plot"),
+                                          textOutput("timeseries_summary")
+                                 )
+                        )
                       )))
   )
 )
@@ -511,6 +525,7 @@ server <- function(input, output, session) {
                               mapping_polygons = NULL,
                               header_sf = NULL,
                               headers = NULL,
+                              raw_data = NULL,
                               # The color palette for the figures
                               # palette = c("#f5bb57ff",
                               #             "#f8674cff",
@@ -569,14 +584,17 @@ server <- function(input, output, session) {
                  inline = TRUE)
   })
   
-  output$polygon_draw_prompt <- renderUI(expr = if(req(input$polygon_source) == "draw") {
-    HTML(text = paste0(img(src = "polygon_tool_icons.png",
-                           height = "60px",
-                           display = "inline",
-                           align = "left",
-                           hspace = "5px",
-                           vspace = "5px"),
-                       "Please use the buttons found on the left side of the map to draw your polygon boundary."))
+  output$polygon_draw_prompt <- renderUI(expr = if(req(input$data_source == "ldc") & req(input$polygon_source == "draw")) {
+      fluidRow(column(width = 1,
+                      img(src = "polygon_tool_icons.png",
+                          height = "60px",
+                          display = "inline",
+                          align = "left",
+                          hspace = "5px",
+                          vspace = "5px")),
+               column(width = 9,
+                      HTML(text = "Please use the buttons found on the left side of the map to draw your polygon boundary.")
+                      ))
   })
   
   # Add a fetch button when grabbing data from the LDC and the query criteria
@@ -611,13 +629,13 @@ server <- function(input, output, session) {
                             p(class = "data-prompt",
                               "You have data available in the",
                               a("Data tab!",
-                                onclick = "fakeClick('Data')"),
+                                onclick = "tabJump('Data')"),
                               "The next step is to either configure benchmarks in the",
                               a("Benchmarks tab",
-                                onclick = "fakeClick('Benchmarks')"),
+                                onclick = "tabJump('Benchmarks')"),
                               "or to go directly to making figures in the",
                               a("Figures tab.",
-                                onclick = "fakeClick('Figures')")))))
+                                onclick = "tabJump('Figures')")))))
   })
   
   # Keys when grabbing data from the LDC by key values
@@ -692,7 +710,7 @@ server <- function(input, output, session) {
                  class = "info-btn",
                  icon = icon("circle-question"))
   })
-  ##### Start Main Panel #######################################################
+  ###### Start Main Panel ######################################################
   output$main_map_ui <- renderUI({
     if (req(input$query_method) != "spatial" & (!is.null(workspace$mapping_header_sf) | !is.null(workspace$mapping_polygons))) {
       message("Attempting to render main_map_ui")
@@ -706,6 +724,19 @@ server <- function(input, output, session) {
       leafletOutput(outputId = "drawing_map",
                     height = "50vh")
     }
+  })
+  
+  ###### Data Main Panel #######################################################
+  output$data_tab_notyet_ui <- renderUI({
+    # if (is.null(workspace$raw_data)) {
+    message("Rendering the no data warning")
+    fluidRow(column(width = 10,
+                    p(class = "data-prompt",
+                      "If there are no data visible, please return to the",
+                      a("Start tab",
+                        onclick = "tabJump('Start')"),
+                      "and make sure that you've either uploaded a CSV or queried the Landscape Data Commons.")))
+    # }
   })
   
   ##### When the reset button is pressed #####
@@ -1055,15 +1086,16 @@ server <- function(input, output, session) {
                        } else if (workspace$polygon_filetype == "shp") {
                          workspace$polygons <- sf::st_read(dsn = input$polygons_layer)
                        }
-                       message("Making sure the polygons are in NAD83")
-                       workspace$polygons <- sf::st_transform(workspace$polygons,
-                                                              crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
                        
                        # If they've asked us to "repair" polygons, buffer by 0
-                       if (req(input$repair_polygons)) {
+                       if (input$repair_polygons) {
                          message("Attempting to repair polygons by buffering by 0")
+                         message("Making sure the polygons are in NAD83 beforehand")
+                         workspace$polygons <- sf::st_transform(workspace$polygons,
+                                                                crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
                          workspace$polygons <- sf::st_buffer(x = workspace$polygons,
                                                              dist = 0)
+                         message("Polygons are buffered")
                        }
                      }
                    } else {
@@ -1075,7 +1107,7 @@ server <- function(input, output, session) {
                    message("Making sure the polygons are in NAD83")
                    workspace$polygons <- sf::st_transform(workspace$polygons,
                                                           crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
-
+                   
                    message(paste0("Number of individual polygons in workspace$polygons is ",
                                   nrow(workspace$polygons)))
                    message("Adding unique_id variable to workspace$polygons")
