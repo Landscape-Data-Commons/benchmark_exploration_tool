@@ -786,19 +786,22 @@ server <- function(input, output, session) {
                                     type = "error")
                  } else {
                    message("Attempting to unzip file")
-                   # Unzip with an OS-specific system call
-                   # Setting the working directory
-                   setwd(dirname(input$polygons$datapath))
-                   # Passing this to the OS
-                   system(sprintf("cd %s", dirname(input$polygons$datapath)))
-                   # Just checking for debugging
-                   message(getwd())
-                   # The unzipping argument to pass to the OS
-                   system(sprintf("unzip -u %s", input$polygons$datapath))
-                   # Set the working directory back
-                   setwd(workspace$original_directory)
-                   
+                   utils::unzip(zipfile = input$polygons$datapath,
+                                overwrite = TRUE,
+                                exdir = dirname(input$polygons$datapath))
                    message("File unzipped")
+                   # # Unzip with an OS-specific system call
+                   # # Setting the working directory
+                   # setwd(dirname(input$polygons$datapath))
+                   # # Passing this to the OS
+                   # system(sprintf("cd %s", dirname(input$polygons$datapath)))
+                   # # Just checking for debugging
+                   # message(getwd())
+                   # # The unzipping argument to pass to the OS
+                   # system(sprintf("unzip -u %s", input$polygons$datapath))
+                   # # Set the working directory back
+                   # setwd(workspace$original_directory)
+                   # message("File unzipped")
                    # Get the shapefile name
                    extracted_files <- list.files(dirname(input$polygons$datapath),
                                                  full.names = TRUE)
@@ -2293,21 +2296,22 @@ server <- function(input, output, session) {
                    message("Preparing to zip up the following files:")
                    message(paste0(files_to_zip,
                                   collapse = ", "))
+                   zip::zip(zipfile = "plots.zip",
+                            files = files_to_zip)
                    
-                   
-                   switch(Sys.info()[["sysname"]],
-                          Windows = {
-                            message("This is a Windows system. Using 7zip.")
-                            system(paste0("cmd.exe /c \"C:\\Program Files\\7-Zip\\7z\".exe a -tzip plots.zip ",
-                                          paste(files_to_zip,
-                                                collapse = " ")))
-                          },
-                          Linux = {
-                            message("This is a Unix system. Using zip.")
-                            system(paste("zip -D plots %s",
-                                         paste(files_to_zip,
-                                               collapse = " ")))
-                          })
+                   # switch(Sys.info()[["sysname"]],
+                   #        Windows = {
+                   #          message("This is a Windows system. Using 7zip.")
+                   #          system(paste0("cmd.exe /c \"C:\\Program Files\\7-Zip\\7z\".exe a -tzip plots.zip ",
+                   #                        paste(files_to_zip,
+                   #                              collapse = " ")))
+                   #        },
+                   #        Linux = {
+                   #          message("This is a Unix system. Using zip.")
+                   #          system(paste("zip -D plots %s",
+                   #                       paste(files_to_zip,
+                   #                             collapse = " ")))
+                   #        })
                    if (!any(grepl(x = list.files(workspace$temp_directory), pattern = "^plots\\.(zip)|(ZIP)"))) {
                      stop("No valid .zip file called 'plots' exists in the directory.")
                    } else {
