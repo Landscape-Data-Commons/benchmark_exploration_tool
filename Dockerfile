@@ -1,4 +1,4 @@
-FROM landscapedatacommons/r-base:4.2.1
+FROM landscapedatacommons/r-base:4.2.2
 LABEL maintainer='Ken Ramsey <kramsey@jornada-vmail.nmsu.edu>'
 # create Rprofile.site file in container
 RUN echo "local({options(shiny.port = 3838, shiny.host = '0.0.0.0')})" > /usr/lib/R/etc/Rprofile.site
