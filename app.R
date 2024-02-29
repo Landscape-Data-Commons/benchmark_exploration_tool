@@ -39,14 +39,44 @@ ui <- fluidPage(
              id = "navbar-full",
              position = "static-top",
              footer = tags$div(class = "footer",
-                               p(column(width = 4,
+                               p(column(width = 3,
                                         p(a(href = 'mailto:nelson.stauffer@usda.gov',
                                             'Contact us with questions',
                                             target = "_blank"))),
-                                 column(width = 8,
+                                 # column(width = 8,
+                                 #        align = "right",
+                                 #        p(img(src = "combined_logos_hires.png",
+                                 #              width = "95%"))))
+                                 column(width = 9,
                                         align = "right",
-                                        p(img(src = "combined_logos_hires.png",
-                                              width = "95%"))))),
+                                        class = "image-row",
+                                        p(class = "logo",
+                                          a(href = "https://landscapedatacommons.org",
+                                            target = "blank",
+                                            img(src = "ldc_logo.png",
+                                                height = "60px"))),
+                                        p(class = "logo",
+                                          a(href = "https://nrcs.usda.gov",
+                                            target = "blank",
+                                            img(src = "nrcs_logo.png",
+                                                height = "60px"))),
+                                        p(class = "logo",
+                                          a(href = "https://blm.gov",
+                                            target = "blank",
+                                            img(src = "blm_logo.png",
+                                                height = "60px"))),
+                                        p(class = "logo",
+                                          a(href = "https://jornada.nmsu.edu",
+                                            target = "blank",
+                                            img(src = "jer_logo.png",
+                                                height = "60px"))),
+                                        p(class = "logo",
+                                          a(href = "https://ltar.ars.usda.gov/",
+                                            target = "blank",
+                                            img(src = "ltar_logo.png",
+                                                height = "60px"))))
+                               )
+             ),
              
              tabPanel(title = "Start",
                       sidebarLayout(
@@ -127,20 +157,21 @@ ui <- fluidPage(
                             condition = "$('html').hasClass('shiny-busy')",
                             br(),
                             HTML(
-                              "<div class = 'load-message'><img src = 'busy_icon_complex.svg' height = '40rem'>Working! Please wait.<img src = 'busy_icon_complex.svg' height = '40rem' transform = 'scaleX(-1)'></div>"
+                              "<div class = 'busy-message'><img src = 'busy_icon_complex.svg' height = '60rem'>Working! Please wait.<img src = 'busy_icon_complex.svg' height = '60rem' transform = 'scaleX(-1)'></div>"
                             )
                           ),
                           br(),
                           HTML("<center>"),
                           actionButton(inputId = "reset_button",
                                        label = "Reset this tool"),
-                          HTML("</center>"),
+                          HTML("</center>")
                         ),
                         mainPanel(
                           tags$div(class = "main-panel-body",
-                                   uiOutput("drawing_map_ui"),
-                                   uiOutput("main_map_ui")#,
-                                   # includeHTML("instructions.html")
+                                   uiOutput("drawing_map_ui",
+                                            height = "80vh"),
+                                   uiOutput("main_map_ui",
+                                            height = "80vh")
                           )
                         )
                       )
@@ -160,7 +191,7 @@ ui <- fluidPage(
                                       label = "Apply benchmarks",
                                       value = FALSE),
                         conditionalPanel(condition = "input.use_benchmarks",
-                                         p(class = "data-prompt",
+                                         p(class = "next-step-prompt",
                                            "Once you've finished setting up your benchmark ranges, you can generate your plots in the",
                                            a("Figures tab.",
                                              onclick = "tabJump('Figures')")),
@@ -482,7 +513,7 @@ ui <- fluidPage(
                           condition = "$('html').hasClass('shiny-busy')",
                           br(),
                           HTML(
-                            "<div class = 'load-message'><img src = 'busy_icon_complex.svg' height = '40rem'>Working! Please wait.<img src = 'busy_icon_complex.svg' height = '40rem' transform = 'scaleX(-1)'></div>"
+                            "<div class = 'busy-message'><img src = 'busy_icon_complex.svg' height = '60rem'>Working! Please wait.<img src = 'busy_icon_complex.svg' height = '60rem' transform = 'scaleX(-1)'></div>"
                           )
                         ),
                         # Only show if there are plot images to download
@@ -626,7 +657,7 @@ server <- function(input, output, session) {
   output$data_available_ui <- renderUI(if (!is.null(workspace$raw_data)) {
     tagList(br(),
             fluidRow(column(width = 10,
-                            p(class = "data-prompt",
+                            p(class = "next-step-prompt",
                               "You have data available in the",
                               a("Data tab!",
                                 onclick = "tabJump('Data')"),
@@ -715,14 +746,14 @@ server <- function(input, output, session) {
     if (req(input$query_method) != "spatial" & (!is.null(workspace$mapping_header_sf) | !is.null(workspace$mapping_polygons))) {
       message("Attempting to render main_map_ui")
       leafletOutput(outputId = "main_map",
-                    height = "50vh")
+                    height = "80vh")
     }
   })
   output$drawing_map_ui <- renderUI({
     if (req(input$query_method) == "spatial") {
       message("Attempting to render drawing_map_ui")
       leafletOutput(outputId = "drawing_map",
-                    height = "50vh")
+                    height = "80vh")
     }
   })
   
@@ -731,7 +762,7 @@ server <- function(input, output, session) {
     # if (is.null(workspace$raw_data)) {
     message("Rendering the no data warning")
     fluidRow(column(width = 10,
-                    p(class = "data-prompt",
+                    p(class = "next-step-prompt",
                       "If there are no data visible, please return to the",
                       a("Start tab",
                         onclick = "tabJump('Start')"),
@@ -955,7 +986,15 @@ server <- function(input, output, session) {
                                                     weight = 1,
                                                     fillColor = "gray20",
                                                     fillOpacity = 1,
-                                                    radius = 3)
+                                                    radius = 3,
+                                                    clusterOptions = leaflet::markerClusterOptions(showCoverageOnHover = TRUE,
+                                                                                                   zoomToBoundsOnClick = TRUE,
+                                                                                                   disableClusteringAtZoom = 8,
+                                                                                                   spiderfyOnMaxZoom = FALSE,
+                                                                                                   removeOutsideVisibleBounds = TRUE,
+                                                                                                   spiderLegPolylineOptions = list(weight = 1.5, color = "#222", opacity = 0.5),
+                                                                                                   freezeAtZoom = FALSE)
+                                                    )
                  }
                  
                  if (is.null(workspace$mapping_polygons) & is.null(workspace$mapping_header_sf)) {
@@ -2372,7 +2411,15 @@ server <- function(input, output, session) {
                                                     weight = 1,
                                                     fillColor = "gray20",
                                                     fillOpacity = 1,
-                                                    radius = 3)
+                                                    radius = 3,
+                                                    clusterOptions = leaflet::markerClusterOptions(showCoverageOnHover = TRUE,
+                                                                                                   zoomToBoundsOnClick = TRUE,
+                                                                                                   disableClusteringAtZoom = 8,
+                                                                                                   spiderfyOnMaxZoom = FALSE,
+                                                                                                   removeOutsideVisibleBounds = TRUE,
+                                                                                                   spiderLegPolylineOptions = list(weight = 1.5, color = "#222", opacity = 0.5),
+                                                                                                   freezeAtZoom = FALSE)
+                                                    )
                  }
                  
                  message("Rendering map")

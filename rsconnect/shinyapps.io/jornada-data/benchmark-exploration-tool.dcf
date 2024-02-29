@@ -1,0 +1,13 @@
+name: benchmark-exploration-tool
+title: benchmark-exploration-tool
+username: jornada-data
+account: jornada-data
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9673147
+bundleId: 7605777
+url: https://jornada-data.shinyapps.io/benchmark-exploration-tool/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .dockerignore|.github/workflows/main.yml|Dockerfile|example_data.csv|README.md
