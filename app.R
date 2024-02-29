@@ -15,6 +15,8 @@ ui <- fluidPage(
   title = "Benchmark Exploration Tool",
   useShinyjs(),
   tags$head(
+    # Add in Google Analytics tracking
+    includeHTML("google-analytics.html"),
     # Style things nicely!
     tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
     # A function that lets us create links to tabs since there's no
