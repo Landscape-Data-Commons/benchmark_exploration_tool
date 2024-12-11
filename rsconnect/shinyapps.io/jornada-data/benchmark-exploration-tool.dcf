@@ -5,7 +5,7 @@ account: jornada-data
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9673147
-bundleId: 7605777
+bundleId: 8312704
 url: https://jornada-data.shinyapps.io/benchmark-exploration-tool/
 version: 1
 asMultiple: FALSE
