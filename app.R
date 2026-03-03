@@ -837,7 +837,8 @@ server <- function(input, output, session) {
                    # message("File unzipped")
                    # Get the shapefile name
                    extracted_files <- list.files(dirname(input$polygons$datapath),
-                                                 full.names = TRUE)
+                                                 full.names = TRUE,
+                                                 recursive = TRUE)
                    
                    # Look for extracted shapefiles
                    shp_indices <- grepl(extracted_files,
