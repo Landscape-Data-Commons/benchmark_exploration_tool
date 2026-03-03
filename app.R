@@ -5,437 +5,540 @@ library(httr)
 library(stringr)
 library(sf)
 library(leaflet)
+library(leaflet.extras)
+library(shinyjs)
+library(zip)
 source("functions.R")
 
-# Define UI for application that draws a histogram
+# Define UI
 ui <- fluidPage(
+  title = "Benchmark Exploration Tool",
+  useShinyjs(),
   tags$head(
-    tags$style(
-      HTML(
-        ".shiny-notification {
-          position:fixed;
-          top: calc(30%);
-          left: calc(5%);
-          width: calc(25%);
-          opacity: 1;
-          font-weight: bold;
-          box-shadow: 0 0 0 rgba(181,181,181, 0.4);
-          animation: pulse 2s infinite;
-        }
-        @-webkit-keyframes pulse {
-          0% {
-            -webkit-box-shadow: 0 0 0 0 rgba(181,181,181, 0.4);
+    # Add in Google Analytics tracking
+    includeHTML("google-analytics.html"),
+    # Style things nicely!
+    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
+    # A function that lets us create links to tabs since there's no
+    # equivalent to updateTabsetPanel() like updateTabPanel() for some reason.
+    # This lets us make links with a(onclick = "tabJump('Tab Name')")
+    # This comes from StackOverflow, I think?
+    tags$script(HTML('
+        var tabJump = function(tabName) {
+          var dropdownList = document.getElementsByTagName("a");
+          for (var i = 0; i < dropdownList.length; i++) {
+            var link = dropdownList[i];
+            if(link.getAttribute("data-value") == tabName) {
+              link.click();
+            };
           }
-          70% {
-            -webkit-box-shadow: 0 0 0 10px rgba(181,181,181, 0);
-          }
-          100% {
-            -webkit-box-shadow: 0 0 0 0 rgba(181,181,181, 0);
-          }
-        }
-        @keyframes pulse {
-          0% {
-            -moz-box-shadow: 0 0 0 0 rgba(181,181,181, 0.4);
-            box-shadow: 0 0 0 0 rgba(181,181,181, 0.4);
-          }
-          70% {
-            -moz-box-shadow: 0 0 0 10px rgba(181,181,181, 0);
-            box-shadow: 0 0 0 10px rgba(181,181,181, 0);
-          }
-          100% {
-            -moz-box-shadow: 0 0 0 0 rgba(181,181,181, 0);
-            box-shadow: 0 0 0 0 rgba(181,181,181, 0);
-          }
-        }"
-      )
-    )
+        };
+      '))
   ),
   
-  # Application title
-  titlePanel(img(src = "combined_logos.png",
-                 align = "right"),
-             windowTitle = "Benchmark Exploration Tool"),
-  titlePanel(title = "Benchmark Exploration Tool"),
-  
-  
-  # Sidebar with a slider input for number of bins 
-  sidebarLayout(
-    sidebarPanel(
-      helpText("Compare indicator value distributions against benchmarks."),
-      br(),
-      radioButtons(inputId = "data_source",
-                   label = "Data source",
-                   choices = c("Query Landscape Data Commons" = "ldc",
-                               "Upload" = "upload")),
-      conditionalPanel(condition = "input.data_source == 'upload'",
-                       fileInput(inputId = "raw_data",
-                                 label = "Data CSV",
-                                 multiple = FALSE,
-                                 accept = "CSV")),
-      conditionalPanel(condition = "input.data_source == 'ldc'",
-                       selectInput(inputId = "search_type",
-                                   label = "LDC search type",
-                                   choices = c("Spatial" = "spatial",
-                                               "By ecological site" = "EcologicalSiteID",
-                                               "By PrimaryKey" = "PrimaryKey",
-                                               "By ProjectKey" = "ProjectKey"),
-                                   selected = "ecosite"),
-                       conditionalPanel(condition = "input.search_type != 'spatial'",
-                                        textInput(inputId = "keys",
-                                                  label = "Search values",
-                                                  value = "",
-                                                  placeholder = "R042XB012NM")),
-                       conditionalPanel(condition = "input.search_type == 'spatial'",
-                                        fileInput(inputId = "polygons",
-                                                  label = "Polygons ZIP file",
-                                                  multiple = FALSE,
-                                                  accept = ".zip"),
-                                        selectInput(inputId = "polygons_layer",
-                                                    label = "Polygons name",
-                                                    choices = c(""),
-                                                    selected = ""),
-                                        checkboxInput(inputId = "repair_polygons",
-                                                      label = "Repair polygons",
-                                                      value = FALSE)),
-                       actionButton(inputId = "fetch_data",
-                                    label = "Fetch data")),
-      
-      hr(),
-      selectInput(inputId = "id_variables",
-                  label = "Variable(s) with identifying, non-indicator information",
-                  multiple = TRUE,
-                  choices = c("")),
-      selectInput(inputId = "variable",
-                  label = "Indicator to plot",
-                  choices = c("")),
-      textInput(inputId = "variable_name",
-                label = "Indicator label",
-                value = ""),
-      numericInput(inputId = "value_min",
-                   label = "Minimum possible indicator value",
-                   value = 0),
-      numericInput(inputId = "value_max",
-                   label = "Maximum possible indicator value",
-                   value = 100),
-      radioButtons(inputId = "plot_type",
-                   label = "Plot type",
-                   choices = c("Box plot" = "boxplot",
-                               "Histogram" = "histogram"),
-                   selected = "boxplot"),
-      conditionalPanel(condition = "input.plot_type == 'histogram'",
-                       textInput(inputId = "quantiles",
-                                 label = "Quantile break percentages, separated by commas",
-                                 value = "25, 50, 75")),
-      checkboxInput(inputId = "use_benchmarks",
-                    label = "Apply benchmarks (see Benchmark Ranges tab)",
-                    value = FALSE),
-      
-      checkboxInput(inputId = "compare",
-                    label = "Mark comparison value on figures",
-                    value = FALSE),
-      
-      conditionalPanel(condition = "input.compare",
-                       radioButtons(inputId = "comparison_type",
-                                    label = "Comparison value source",
-                                    choices = c("Manual" = "manual", "From current data" = "plot_id"),
-                                    selected = "manual"),
-                       conditionalPanel(condition = "input.comparison_type == 'manual'",
-                                        numericInput(inputId = "manual_comparison_value",
-                                                     label = "Indicator value",
-                                                     value = 0)),
-                       conditionalPanel(condition = "input.comparison_type == 'plot_id'",
-                                        selectInput(inputId = "identifying_variable",
-                                                    label = "Uniquely identifying variable",
-                                                    choices = c("")),
-                                        selectInput(inputId = "comparison_plot_id",
-                                                    # label = "Comparison unique ID(s)",
-                                                    # multiple = TRUE,
-                                                    label = "Comparison unique ID",
-                                                    multiple = FALSE,
-                                                    choices = c("")))
-      ),
-      
-      checkboxInput(inputId = "time_series",
-                    label = "Plot yearly time series",
-                    value = FALSE),
-      conditionalPanel(condition = "input.time_series",
-                       selectInput(inputId = "date_variable",
-                                   label = "Date variable",
-                                   choices = c("")),
-                       radioButtons(inputId = "date_type",
-                                    label = "The date format is:",
-                                    choices = c("2020-10-30" = "iso8601",
-                                                "October 30, 2020" = "month_day_year",
-                                                "2020" = "year"))
-                       
-      ),
-      
-      hr(),
-      # Only show the plot button if data have been uploaded/downloaded
-      conditionalPanel(condition = "input.variable != ''",
-                       actionButton(inputId = "plot_button",
-                                    label = "Plot indicator distribution!")),
-      # Only show if there are plot images to download
-      conditionalPanel(condition = "input.plot_button >= 1",
-                       downloadButton(outputId = 'downloadData',
-                                      label = 'Download results')),
-      
-      helpText("Created at the USDA-ARS Jornada Experimental Range in collaboration with the Bureau of Land Management")
-    ),
-    
-    # Show a plot of the generated distribution
-    mainPanel(
-      tabsetPanel(id = "maintabs",
-                  
-                  tabPanel(title = "Instructions",
-                           includeHTML("instructions.html")),
-                  
-                  tabPanel(title = "Benchmark ranges",
-                           
-                           conditionalPanel(condition = "input.use_benchmarks",
-                                            selectInput(inputId = "range_count",
-                                                        label = "Number of benchmark ranges",
-                                                        choices = 2:6,
-                                                        selected = 2),
-                                            # Labels
-                                            fluidRow(column(width = 2,
-                                                            helpText("Lower limit")),
-                                                     column(width = 1,
-                                                            helpText("Lower limit relation")),
-                                                     column(width = 1,
-                                                            helpText("Indicator value")),
-                                                     column(width = 1,
-                                                            helpText("Upper limit relation")),
-                                                     column(width = 2,
-                                                            helpText("Upper limit")),
-                                                     
-                                                     column(width = 3,
-                                                            helpText("Benchmark category")),
-                                                     hr()
-                                            ),
-                                            # Row 1
-                                            fluidRow(column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_lower_1",
-                                                                         label = "",
-                                                                         value = 0,
-                                                                         min = -Inf,
-                                                                         max = Inf)),
-                                                     column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_lower_1",
-                                                                        label = "",
-                                                                        choices = c("<", "<="),
-                                                                        selected = "<=")),
-                                                     column(width = 1,
-                                                            HTML("<p style='text-align:center;'><br>X</p>")),
-                                                     column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_upper_1",
-                                                                        label = "",
-                                                                        choices = c("<", "<="),
-                                                                        selected = "<=")),
-                                                     column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_upper_1",
-                                                                         label = "",
-                                                                         value = 50,
-                                                                         min = -Inf,
-                                                                         max = Inf)),
-                                                     
-                                                     column(width = 3,
-                                                            textInput(inputId = "benchmark_category_1",
+  navbarPage(title = tags$div(class = "tool-title",
+                              "Benchmark Exploration Tool"),
+             id = "navbar-full",
+             position = "static-top",
+             footer = tags$div(class = "footer",
+                               p(column(width = 3,
+                                        p(a(href = 'mailto:nelson.stauffer@usda.gov',
+                                            'Contact us with questions',
+                                            target = "_blank"))),
+                                 # column(width = 8,
+                                 #        align = "right",
+                                 #        p(img(src = "combined_logos_hires.png",
+                                 #              width = "95%"))))
+                                 column(width = 9,
+                                        align = "right",
+                                        class = "image-row",
+                                        p(class = "logo",
+                                          a(href = "https://landscapedatacommons.org",
+                                            target = "blank",
+                                            img(src = "ldc_logo.png",
+                                                height = "60px"))),
+                                        p(class = "logo",
+                                          a(href = "https://nrcs.usda.gov",
+                                            target = "blank",
+                                            img(src = "nrcs_logo.png",
+                                                height = "60px"))),
+                                        p(class = "logo",
+                                          a(href = "https://blm.gov",
+                                            target = "blank",
+                                            img(src = "blm_logo.png",
+                                                height = "60px"))),
+                                        p(class = "logo",
+                                          a(href = "https://jornada.nmsu.edu",
+                                            target = "blank",
+                                            img(src = "jer_logo.png",
+                                                height = "60px"))),
+                                        p(class = "logo",
+                                          a(href = "https://ltar.ars.usda.gov/",
+                                            target = "blank",
+                                            img(src = "ltar_logo.png",
+                                                height = "60px"))))
+                               )
+             ),
+             
+             tabPanel(title = "Start",
+                      sidebarLayout(
+                        sidebarPanel(
+                          HTML("<div class = 'app-info'>
+                                <h3>About</h3>
+                                This application visualizes the distribution of values for indicators to help determine value ranges for categorical benchmarks or to see the consequences of applying categorical benchmarks.
+                                <br>
+                                </div>"
+                          ),
+                          fluidRow(column(width = 10,
+                                          radioButtons(inputId = "data_source",
+                                                       label = "Data source",
+                                                       choices = c("Query the Landscape Data Commons" = "ldc",
+                                                                   "Upload tabular data file" = "upload"),
+                                                       selected = character(0))),
+                                   column(width = 1,
+                                          actionButton(inputId = "data_source_info",
+                                                       label = "",
+                                                       class = "info-btn",
+                                                       icon = icon("circle-question")))),
+                          conditionalPanel(condition = "input.data_source == 'upload'",
+                                           fluidRow(column(width = 10,
+                                                           fileInput(inputId = "raw_data",
+                                                                     label = "Data CSV",
+                                                                     multiple = FALSE,
+                                                                     accept = "CSV")),
+                                                    column(width = 1))
+                          ),
+                          # If the data are going to come from the LDC, display options for querying
+                          fluidRow(column(width = 10,
+                                          uiOutput("query_method_ui")),
+                                   column(width = 1,
+                                          uiOutput("query_method_info_ui"))),
+                          # Should the polygons be uploaded or drawn?
+                          fluidRow(column(width = 10,
+                                          uiOutput("polygon_source_ui"))),
+                          # If the query will be key-based, show the text box input for keys
+                          fluidRow(column(width = 10,
+                                          uiOutput("keys_input_ui")),
+                                   column(width = 1,
+                                          uiOutput("keys_input_info_ui"))),
+                          # If the query will be spatial, show the upload bar
+                          fluidRow(column(width = 10,
+                                          uiOutput("spatial_input_ui")),
+                                   column(width = 1,
+                                          uiOutput("spatial_input_info_ui"))),
+                          # If there's an uploaded polygon file, show the options to select a feature
+                          fluidRow(column(width = 10,
+                                          uiOutput("select_polygon_ui")),
+                                   column(width = 1,
+                                          uiOutput("select_polygon_info_ui"))),
+                          fluidRow(column(width = 11,
+                                          uiOutput("polygon_draw_prompt"))),
+                          # If there's an uploaded polygon file, show the option to repair the polygons
+                          fluidRow(column(width = 10,
+                                          uiOutput("repair_polygons_ui")),
+                                   column(width = 1,
+                                          uiOutput("repair_polygons_info_ui"))),
+                          # If querying the LDC and the query criteria are selected, show
+                          # the fetch button
+                          # There are three because I have to render them separately depending
+                          # on different conditions and I'm not allowed to have multiple
+                          # situations render to the same output name. The UI elements
+                          # both contain identical fetch buttons though since they can
+                          # never coexist.
+                          HTML("<center>"),
+                          uiOutput("fetch_ui1"),
+                          HTML("</center>"),
+                          HTML("<center>"),
+                          uiOutput("fetch_ui2"),
+                          HTML("</center>"),
+                          HTML("<center>"),
+                          uiOutput("fetch_ui3"),
+                          HTML("</center>"),
+                          uiOutput("data_available_ui"),
+                          conditionalPanel(
+                            condition = "$('html').hasClass('shiny-busy')",
+                            br(),
+                            HTML(
+                              "<div class = 'busy-message'><img src = 'busy_icon_complex.svg' height = '60rem'>Working! Please wait.<img src = 'busy_icon_complex.svg' height = '60rem' transform = 'scaleX(-1)'></div>"
+                            )
+                          ),
+                          br(),
+                          HTML("<center>"),
+                          actionButton(inputId = "reset_button",
+                                       label = "Reset this tool"),
+                          HTML("</center>")
+                        ),
+                        mainPanel(
+                          tags$div(class = "main-panel-body",
+                                   uiOutput("drawing_map_ui",
+                                            height = "80vh"),
+                                   uiOutput("main_map_ui",
+                                            height = "80vh")
+                          )
+                        )
+                      )
+             ),
+             tabPanel(title = "Data",
+                      mainPanel(width = 11,
+                                uiOutput(outputId = "data_tab_notyet_ui"),
+                                tags$div(class = "data-table",
+                                         fluidRow(
+                                           column(width = 12,
+                                                  DT::DTOutput("data_table"))
+                                         )))),
+             tabPanel(title = "Benchmarks",
+                      sidebarLayout(sidebarPanel = sidebarPanel(
+                        width = 8,
+                        checkboxInput(inputId = "use_benchmarks",
+                                      label = "Apply benchmarks",
+                                      value = FALSE),
+                        conditionalPanel(condition = "input.use_benchmarks",
+                                         p(class = "next-step-prompt",
+                                           "Once you've finished setting up your benchmark ranges, you can generate your plots in the",
+                                           a("Figures tab.",
+                                             onclick = "tabJump('Figures')")),
+                                         fluidRow(column(width = 3,
+                                                         selectInput(inputId = "range_count",
+                                                                     label = "Number of benchmark ranges",
+                                                                     choices = 2:6,
+                                                                     selected = 2))),
+                                         # Labels
+                                         fluidRow(column(width = 2,
+                                                         HTML("<div class = 'benchmark-ui-label'>
+                                                              Lower limit
+                                                              </div>")),
+                                                  column(width = 1,
+                                                         HTML("<div class = 'benchmark-ui-label'>
+                                                              Lower limit relation
+                                                              </div>")),
+                                                  column(width = 1,
+                                                         HTML("<div class = 'benchmark-ui-label'>
+                                                              Indicator value
+                                                              </div>")),
+                                                  column(width = 1,
+                                                         HTML("<div class = 'benchmark-ui-label'>
+                                                              Upper limit relation
+                                                              </div>")),
+                                                  column(width = 2,
+                                                         HTML("<div class = 'benchmark-ui-label'>
+                                                              Upper limit
+                                                              </div>")),
+                                                  
+                                                  column(width = 3,
+                                                         HTML("<div class = 'benchmark-ui-label'>
+                                                              Benchmark category
+                                                              </div>")),
+                                                  column(width = 1,
+                                                         actionButton(inputId = "benchmark_ui_info",
                                                                       label = "",
-                                                                      placeholder = "Not Meeting",
-                                                                      value = "Not Meeting")),
-                                                     hr()
-                                            ),
-                                            # Row 2
-                                            fluidRow(column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_lower_2",
-                                                                         label = "",
-                                                                         value = 50,
-                                                                         min = -Inf,
-                                                                         max = Inf)),
-                                                     column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_lower_2",
-                                                                        label = "",
-                                                                        choices = c("<", "<="),
-                                                                        selected = "<")),
-                                                     column(width = 1,
-                                                            HTML("<p style='text-align:center;'><br>X</p>")),
-                                                     column(width = 1,
-                                                            selectInput(inputId = "benchmark_relationship_upper_2",
-                                                                        label = "",
-                                                                        choices = c("<", "<="),
-                                                                        selected = "<=")),
-                                                     column(width = 2,
-                                                            numericInput(inputId = "benchmark_range_limit_upper_2",
-                                                                         label = "",
-                                                                         value = 100,
-                                                                         min = -Inf,
-                                                                         max = Inf)),
-                                                     
-                                                     column(width = 3,
-                                                            textInput(inputId = "benchmark_category_2",
+                                                                      class = "info-btn",
+                                                                      icon = icon("circle-question"))),
+                                                  br()
+                                         ),
+                                         # Row 1
+                                         fluidRow(column(width = 2,
+                                                         numericInput(inputId = "benchmark_range_limit_lower_1",
                                                                       label = "",
-                                                                      placeholder = "Not Meeting",
-                                                                      value = "Meeting")),
-                                                     hr()
-                                            ),
-                                            # Row 3
-                                            conditionalPanel(condition = "input.range_count > 2",
-                                                             fluidRow(column(width = 2,
-                                                                             numericInput(inputId = "benchmark_range_limit_lower_3",
-                                                                                          label = "",
-                                                                                          value = 0,
-                                                                                          min = -Inf,
-                                                                                          max = Inf)),
-                                                                      column(width = 1,
-                                                                             selectInput(inputId = "benchmark_relationship_lower_3",
-                                                                                         label = "",
-                                                                                         choices = c("<", "<="),
-                                                                                         selected = "<")),
-                                                                      column(width = 1,
-                                                                             HTML("<p style='text-align:center;'><br>X</p>")),
-                                                                      column(width = 1,
-                                                                             selectInput(inputId = "benchmark_relationship_upper_3",
-                                                                                         label = "",
-                                                                                         choices = c("<", "<="),
-                                                                                         selected = "<=")),
-                                                                      column(width = 2,
-                                                                             numericInput(inputId = "benchmark_range_limit_upper_3",
-                                                                                          label = "",
-                                                                                          value = 50,
-                                                                                          min = -Inf,
-                                                                                          max = Inf)),
-                                                                      
-                                                                      column(width = 3,
-                                                                             textInput(inputId = "benchmark_category_3",
+                                                                      value = 0,
+                                                                      min = -Inf,
+                                                                      max = Inf)),
+                                                  column(width = 1,
+                                                         selectInput(inputId = "benchmark_relationship_lower_1",
+                                                                     label = "",
+                                                                     choices = c("<", "<="),
+                                                                     selected = "<=")),
+                                                  column(width = 1,
+                                                         HTML("<p style='text-align:center;'><br>X</p>")),
+                                                  column(width = 1,
+                                                         selectInput(inputId = "benchmark_relationship_upper_1",
+                                                                     label = "",
+                                                                     choices = c("<", "<="),
+                                                                     selected = "<=")),
+                                                  column(width = 2,
+                                                         numericInput(inputId = "benchmark_range_limit_upper_1",
+                                                                      label = "",
+                                                                      value = 50,
+                                                                      min = -Inf,
+                                                                      max = Inf)),
+                                                  
+                                                  column(width = 3,
+                                                         textInput(inputId = "benchmark_category_1",
+                                                                   label = "",
+                                                                   placeholder = "Not Meeting",
+                                                                   value = "Not Meeting")),
+                                                  br()
+                                         ),
+                                         # Row 2
+                                         fluidRow(column(width = 2,
+                                                         numericInput(inputId = "benchmark_range_limit_lower_2",
+                                                                      label = "",
+                                                                      value = 50,
+                                                                      min = -Inf,
+                                                                      max = Inf)),
+                                                  column(width = 1,
+                                                         selectInput(inputId = "benchmark_relationship_lower_2",
+                                                                     label = "",
+                                                                     choices = c("<", "<="),
+                                                                     selected = "<")),
+                                                  column(width = 1,
+                                                         HTML("<p style='text-align:center;'><br>X</p>")),
+                                                  column(width = 1,
+                                                         selectInput(inputId = "benchmark_relationship_upper_2",
+                                                                     label = "",
+                                                                     choices = c("<", "<="),
+                                                                     selected = "<=")),
+                                                  column(width = 2,
+                                                         numericInput(inputId = "benchmark_range_limit_upper_2",
+                                                                      label = "",
+                                                                      value = 100,
+                                                                      min = -Inf,
+                                                                      max = Inf)),
+                                                  
+                                                  column(width = 3,
+                                                         textInput(inputId = "benchmark_category_2",
+                                                                   label = "",
+                                                                   placeholder = "Not Meeting",
+                                                                   value = "Meeting")),
+                                                  br()
+                                         ),
+                                         # Row 3
+                                         conditionalPanel(condition = "input.range_count > 2",
+                                                          fluidRow(column(width = 2,
+                                                                          numericInput(inputId = "benchmark_range_limit_lower_3",
                                                                                        label = "",
-                                                                                       placeholder = "Not Meeting",
-                                                                                       value = "")),
-                                                                      hr()
-                                                             )),
-                                            # Row 4
-                                            conditionalPanel(condition = "input.range_count > 3",
-                                                             fluidRow(column(width = 2,
-                                                                             numericInput(inputId = "benchmark_range_limit_lower_4",
-                                                                                          label = "",
-                                                                                          value = 0,
-                                                                                          min = -Inf,
-                                                                                          max = Inf)),
-                                                                      column(width = 1,
-                                                                             selectInput(inputId = "benchmark_relationship_lower_4",
-                                                                                         label = "",
-                                                                                         choices = c("<", "<="),
-                                                                                         selected = "<")),
-                                                                      column(width = 1,
-                                                                             HTML("<p style='text-align:center;'><br>X</p>")),
-                                                                      column(width = 1,
-                                                                             selectInput(inputId = "benchmark_relationship_upper_4",
-                                                                                         label = "",
-                                                                                         choices = c("<", "<="),
-                                                                                         selected = "<=")),
-                                                                      column(width = 2,
-                                                                             numericInput(inputId = "benchmark_range_limit_upper_4",
-                                                                                          label = "",
-                                                                                          value = 50,
-                                                                                          min = -Inf,
-                                                                                          max = Inf)),
-                                                                      
-                                                                      column(width = 3,
-                                                                             textInput(inputId = "benchmark_category_4",
+                                                                                       value = 0,
+                                                                                       min = -Inf,
+                                                                                       max = Inf)),
+                                                                   column(width = 1,
+                                                                          selectInput(inputId = "benchmark_relationship_lower_3",
+                                                                                      label = "",
+                                                                                      choices = c("<", "<="),
+                                                                                      selected = "<")),
+                                                                   column(width = 1,
+                                                                          HTML("<p style='text-align:center;'><br>X</p>")),
+                                                                   column(width = 1,
+                                                                          selectInput(inputId = "benchmark_relationship_upper_3",
+                                                                                      label = "",
+                                                                                      choices = c("<", "<="),
+                                                                                      selected = "<=")),
+                                                                   column(width = 2,
+                                                                          numericInput(inputId = "benchmark_range_limit_upper_3",
                                                                                        label = "",
-                                                                                       placeholder = "Not Meeting",
-                                                                                       value = "")),
-                                                                      hr()
-                                                             )),
-                                            # Row 5
-                                            conditionalPanel(condition = "input.range_count > 4",
-                                                             fluidRow(column(width = 2,
-                                                                             numericInput(inputId = "benchmark_range_limit_lower_5",
-                                                                                          label = "",
-                                                                                          value = 0,
-                                                                                          min = -Inf,
-                                                                                          max = Inf)),
-                                                                      column(width = 1,
-                                                                             selectInput(inputId = "benchmark_relationship_lower_5",
-                                                                                         label = "",
-                                                                                         choices = c("<", "<="),
-                                                                                         selected = "<")),
-                                                                      column(width = 1,
-                                                                             HTML("<p style='text-align:center;'><br>X</p>")),
-                                                                      column(width = 1,
-                                                                             selectInput(inputId = "benchmark_relationship_upper_5",
-                                                                                         label = "",
-                                                                                         choices = c("<", "<="),
-                                                                                         selected = "<=")),
-                                                                      column(width = 2,
-                                                                             numericInput(inputId = "benchmark_range_limit_upper_5",
-                                                                                          label = "",
-                                                                                          value = 50,
-                                                                                          min = -Inf,
-                                                                                          max = Inf)),
-                                                                      
-                                                                      column(width = 3,
-                                                                             textInput(inputId = "benchmark_category_5",
+                                                                                       value = 50,
+                                                                                       min = -Inf,
+                                                                                       max = Inf)),
+                                                                   
+                                                                   column(width = 3,
+                                                                          textInput(inputId = "benchmark_category_3",
+                                                                                    label = "",
+                                                                                    placeholder = "Not Meeting",
+                                                                                    value = "")),
+                                                                   br()
+                                                          )),
+                                         # Row 4
+                                         conditionalPanel(condition = "input.range_count > 3",
+                                                          fluidRow(column(width = 2,
+                                                                          numericInput(inputId = "benchmark_range_limit_lower_4",
                                                                                        label = "",
-                                                                                       placeholder = "Not Meeting",
-                                                                                       value = "")),
-                                                                      hr()
-                                                             )),
-                                            # Row 6
-                                            conditionalPanel(condition = "input.range_count > 5",
-                                                             fluidRow(column(width = 2,
-                                                                             numericInput(inputId = "benchmark_range_limit_lower_6",
-                                                                                          label = "",
-                                                                                          value = 0,
-                                                                                          min = -Inf,
-                                                                                          max = Inf)),
-                                                                      column(width = 1,
-                                                                             selectInput(inputId = "benchmark_relationship_lower_6",
-                                                                                         label = "",
-                                                                                         choices = c("<", "<="),
-                                                                                         selected = "<")),
-                                                                      column(width = 1,
-                                                                             HTML("<p style='text-align:center;'><br>X</p>")),
-                                                                      column(width = 1,
-                                                                             selectInput(inputId = "benchmark_relationship_upper_6",
-                                                                                         label = "",
-                                                                                         choices = c("<", "<="),
-                                                                                         selected = "<=")),
-                                                                      column(width = 2,
-                                                                             numericInput(inputId = "benchmark_range_limit_upper_6",
-                                                                                          label = "",
-                                                                                          value = 50,
-                                                                                          min = -Inf,
-                                                                                          max = Inf)),
-                                                                      
-                                                                      column(width = 3,
-                                                                             textInput(inputId = "benchmark_category_6",
+                                                                                       value = 0,
+                                                                                       min = -Inf,
+                                                                                       max = Inf)),
+                                                                   column(width = 1,
+                                                                          selectInput(inputId = "benchmark_relationship_lower_4",
+                                                                                      label = "",
+                                                                                      choices = c("<", "<="),
+                                                                                      selected = "<")),
+                                                                   column(width = 1,
+                                                                          HTML("<p style='text-align:center;'><br>X</p>")),
+                                                                   column(width = 1,
+                                                                          selectInput(inputId = "benchmark_relationship_upper_4",
+                                                                                      label = "",
+                                                                                      choices = c("<", "<="),
+                                                                                      selected = "<=")),
+                                                                   column(width = 2,
+                                                                          numericInput(inputId = "benchmark_range_limit_upper_4",
                                                                                        label = "",
-                                                                                       placeholder = "Not Meeting",
-                                                                                       value = "")),
-                                                                      hr()
-                                                             ))
-                           ),
-                           
-                  ),
-                  
-                  tabPanel(title = "Figures",
-                           plotOutput("quantiles_plot"),
-                           textOutput("quantile_caption"),
-                           plotOutput("benchmark_plot"),
-                           textOutput("benchmark_summary"),
-                           plotOutput("timeseries_plot"),
-                           textOutput("timeseries_summary")),
-                  tabPanel(title = "Data",
-                           dataTableOutput("data_table")),
-                  tabPanel(title = "Map",
-                           leaflet::leafletOutput(outputId = "map",
-                                                  height = "80vh")))
-      # tableOutput("data_table")))
-      
-    )
+                                                                                       value = 50,
+                                                                                       min = -Inf,
+                                                                                       max = Inf)),
+                                                                   
+                                                                   column(width = 3,
+                                                                          textInput(inputId = "benchmark_category_4",
+                                                                                    label = "",
+                                                                                    placeholder = "Not Meeting",
+                                                                                    value = "")),
+                                                                   br()
+                                                          )),
+                                         # Row 5
+                                         conditionalPanel(condition = "input.range_count > 4",
+                                                          fluidRow(column(width = 2,
+                                                                          numericInput(inputId = "benchmark_range_limit_lower_5",
+                                                                                       label = "",
+                                                                                       value = 0,
+                                                                                       min = -Inf,
+                                                                                       max = Inf)),
+                                                                   column(width = 1,
+                                                                          selectInput(inputId = "benchmark_relationship_lower_5",
+                                                                                      label = "",
+                                                                                      choices = c("<", "<="),
+                                                                                      selected = "<")),
+                                                                   column(width = 1,
+                                                                          HTML("<p style='text-align:center;'><br>X</p>")),
+                                                                   column(width = 1,
+                                                                          selectInput(inputId = "benchmark_relationship_upper_5",
+                                                                                      label = "",
+                                                                                      choices = c("<", "<="),
+                                                                                      selected = "<=")),
+                                                                   column(width = 2,
+                                                                          numericInput(inputId = "benchmark_range_limit_upper_5",
+                                                                                       label = "",
+                                                                                       value = 50,
+                                                                                       min = -Inf,
+                                                                                       max = Inf)),
+                                                                   
+                                                                   column(width = 3,
+                                                                          textInput(inputId = "benchmark_category_5",
+                                                                                    label = "",
+                                                                                    placeholder = "Not Meeting",
+                                                                                    value = "")),
+                                                                   br()
+                                                          )),
+                                         # Row 6
+                                         conditionalPanel(condition = "input.range_count > 5",
+                                                          fluidRow(column(width = 2,
+                                                                          numericInput(inputId = "benchmark_range_limit_lower_6",
+                                                                                       label = "",
+                                                                                       value = 0,
+                                                                                       min = -Inf,
+                                                                                       max = Inf)),
+                                                                   column(width = 1,
+                                                                          selectInput(inputId = "benchmark_relationship_lower_6",
+                                                                                      label = "",
+                                                                                      choices = c("<", "<="),
+                                                                                      selected = "<")),
+                                                                   column(width = 1,
+                                                                          HTML("<p style='text-align:center;'><br>X</p>")),
+                                                                   column(width = 1,
+                                                                          selectInput(inputId = "benchmark_relationship_upper_6",
+                                                                                      label = "",
+                                                                                      choices = c("<", "<="),
+                                                                                      selected = "<=")),
+                                                                   column(width = 2,
+                                                                          numericInput(inputId = "benchmark_range_limit_upper_6",
+                                                                                       label = "",
+                                                                                       value = 50,
+                                                                                       min = -Inf,
+                                                                                       max = Inf)),
+                                                                   
+                                                                   column(width = 3,
+                                                                          textInput(inputId = "benchmark_category_6",
+                                                                                    label = "",
+                                                                                    placeholder = "Not Meeting",
+                                                                                    value = "")),
+                                                                   br()
+                                                          ))
+                        )
+                      ),
+                      mainPanel = mainPanel())),
+             tabPanel(title = "Figures",
+                      sidebarLayout(sidebarPanel = sidebarPanel(
+                        selectInput(inputId = "id_variables",
+                                    label = "Variable(s) with identifying, non-indicator information",
+                                    multiple = TRUE,
+                                    choices = c("")),
+                        selectInput(inputId = "variable",
+                                    label = "Indicator to plot",
+                                    choices = c("")),
+                        textInput(inputId = "variable_name",
+                                  label = "Indicator label",
+                                  value = ""),
+                        numericInput(inputId = "value_min",
+                                     label = "Minimum possible indicator value",
+                                     value = 0),
+                        numericInput(inputId = "value_max",
+                                     label = "Maximum possible indicator value",
+                                     value = 100),
+                        radioButtons(inputId = "plot_type",
+                                     label = "Plot type",
+                                     choices = c("Box plot" = "boxplot",
+                                                 "Histogram" = "histogram"),
+                                     selected = "boxplot"),
+                        conditionalPanel(condition = "input.plot_type == 'histogram'",
+                                         textInput(inputId = "quantiles",
+                                                   label = "Quantile break percentages, separated by commas",
+                                                   value = "25, 50, 75")),
+                        checkboxInput(inputId = "compare",
+                                      label = "Mark comparison value on figures",
+                                      value = FALSE),
+                        
+                        conditionalPanel(condition = "input.compare",
+                                         radioButtons(inputId = "comparison_type",
+                                                      label = "Comparison value source",
+                                                      choices = c("Manual" = "manual", "From current data" = "plot_id"),
+                                                      selected = "manual"),
+                                         conditionalPanel(condition = "input.comparison_type == 'manual'",
+                                                          numericInput(inputId = "manual_comparison_value",
+                                                                       label = "Indicator value",
+                                                                       value = 0)),
+                                         conditionalPanel(condition = "input.comparison_type == 'plot_id'",
+                                                          selectInput(inputId = "identifying_variable",
+                                                                      label = "Uniquely identifying variable",
+                                                                      choices = c("")),
+                                                          selectInput(inputId = "comparison_plot_id",
+                                                                      # label = "Comparison unique ID(s)",
+                                                                      # multiple = TRUE,
+                                                                      label = "Comparison unique ID",
+                                                                      multiple = FALSE,
+                                                                      choices = c("")))
+                        ),
+                        
+                        checkboxInput(inputId = "time_series",
+                                      label = "Plot yearly time series",
+                                      value = FALSE),
+                        conditionalPanel(condition = "input.time_series",
+                                         selectInput(inputId = "date_variable",
+                                                     label = "Date variable",
+                                                     choices = c("")),
+                                         radioButtons(inputId = "date_type",
+                                                      label = "The date format is:",
+                                                      choices = c("2020-10-30" = "iso8601",
+                                                                  "October 30, 2020" = "month_day_year",
+                                                                  "2020" = "year"))
+                                         
+                        ),
+                        # Only show the plot button if data have been uploaded/downloaded
+                        conditionalPanel(condition = "input.variable != ''",
+                                         br(),
+                                         actionButton(inputId = "plot_button",
+                                                      label = "Plot indicator distribution!")),
+                        conditionalPanel(
+                          condition = "$('html').hasClass('shiny-busy')",
+                          br(),
+                          HTML(
+                            "<div class = 'busy-message'><img src = 'busy_icon_complex.svg' height = '60rem'>Working! Please wait.<img src = 'busy_icon_complex.svg' height = '60rem' transform = 'scaleX(-1)'></div>"
+                          )
+                        ),
+                        # Only show if there are plot images to download
+                        conditionalPanel(condition = "input.plot_button >= 1",
+                                         br(),
+                                         downloadButton(outputId = 'downloadData',
+                                                        label = 'Download results'))
+                      ),
+                      mainPanel = mainPanel(
+                        tabPanel(title = "Figures",
+                                 tags$div(class = "main-panel-body",
+                                          plotOutput("quantiles_plot"),
+                                          textOutput("quantile_caption"),
+                                          plotOutput("benchmark_plot"),
+                                          textOutput("benchmark_summary"),
+                                          plotOutput("timeseries_plot"),
+                                          textOutput("timeseries_summary")
+                                 )
+                        )
+                      )))
   )
 )
+
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
@@ -455,6 +558,7 @@ server <- function(input, output, session) {
                               mapping_polygons = NULL,
                               header_sf = NULL,
                               headers = NULL,
+                              raw_data = NULL,
                               # The color palette for the figures
                               # palette = c("#f5bb57ff",
                               #             "#f8674cff",
@@ -482,6 +586,210 @@ server <- function(input, output, session) {
   
   # Nor are there plots
   output$plot_files <- renderText("FALSE")
+  
+  
+  ##### Conditional UI elements #####
+  ###### Start Sidebar ######
+  # Query method for when grabbing data from the LDC
+  output$query_method_ui <- renderUI(expr = if (req(input$data_source) == "ldc") {
+    message("data_source is 'ldc'. Rendering query_method UI element.")
+    selectInput(inputId = "query_method",
+                label = "Query method",
+                choices = c("Spatial" = "spatial",
+                            "By ecological site" = "EcologicalSiteID",
+                            "By PrimaryKey" = "PrimaryKey",
+                            "By ProjectKey" = "ProjectKey"),
+                selected = "spatial")
+  })
+  output$query_method_info_ui <- renderUI(expr = if (req(input$data_source) == "ldc") {
+    message("data_source is 'ldc'. Rendering query_method_info UI element.")
+    actionButton(inputId = "query_method_info",
+                 label = "",
+                 class = "info-btn",
+                 icon = icon("circle-question"))
+  })
+  
+  output$polygon_source_ui <- renderUI(expr = if (req(input$query_method) == "spatial" & req(input$data_source) == "ldc") {
+    radioButtons(inputId = "polygon_source",
+                 label = "Polygon source",
+                 choices = c("Uploaded" = "upload",
+                             "Drawn" = "draw"),
+                 inline = TRUE)
+  })
+  
+  output$polygon_draw_prompt <- renderUI(expr = if(req(input$data_source == "ldc") & req(input$polygon_source == "draw")) {
+      fluidRow(column(width = 1,
+                      img(src = "polygon_tool_icons.png",
+                          height = "60px",
+                          display = "inline",
+                          align = "left",
+                          hspace = "5px",
+                          vspace = "5px")),
+               column(width = 9,
+                      HTML(text = "Please use the buttons found on the left side of the map to draw your polygon boundary.")
+                      ))
+  })
+  
+  # Add a fetch button when grabbing data from the LDC and the query criteria
+  # are available
+  # Apparently since the tool will never have input$keys and input$polygons_layer
+  # at the same time, I can't capture them both in a single conditional, but I
+  # can do it in two separate ones rendering an identical element because I know
+  # they'll never come into conflict
+  output$fetch_ui1 <- renderUI(expr = if (req(input$query_method) %in% c("EcologicalSiteID", "PrimaryKey", "ProjectKey") & req(input$keys) != "") {
+    tagList(br(),
+            actionButton(inputId = "fetch_data",
+                         label = "Fetch data"))
+  })
+  output$fetch_ui2 <- renderUI(expr = if (req(input$query_method) == "spatial" & (req(input$polygon_source) == "upload" & req(input$polygons_layer) != "")) {
+    tagList(br(),
+            actionButton(inputId = "fetch_data",
+                         label = "Fetch data"))
+  })
+  output$fetch_ui3 <- renderUI(expr = if (req(input$query_method) == "spatial" & (req(input$polygon_source) == "draw" & !is.null(req(workspace$drawn_polygon_sf)))) {
+    tagList(br(),
+            actionButton(inputId = "fetch_data",
+                         label = "Fetch data"))
+  })
+  
+  # Building the links to other tabs!
+  # Note that we have to do this with a() and an onclick argument that calls the
+  # function defined way up at the top of all this. The a() is necessary because
+  # we can't nest another layer of quotes in a string, being limited to "" and ''
+  output$data_available_ui <- renderUI(if (!is.null(workspace$raw_data)) {
+    tagList(br(),
+            fluidRow(column(width = 10,
+                            p(class = "next-step-prompt",
+                              "You have data available in the",
+                              a("Data tab!",
+                                onclick = "tabJump('Data')"),
+                              "The next step is to either configure benchmarks in the",
+                              a("Benchmarks tab",
+                                onclick = "tabJump('Benchmarks')"),
+                              "or to go directly to making figures in the",
+                              a("Figures tab.",
+                                onclick = "tabJump('Figures')")))))
+  })
+  
+  # Keys when grabbing data from the LDC by key values
+  output$keys_input_ui <- renderUI(expr = if (req(input$query_method) %in% c("EcologicalSiteID", "PrimaryKey", "ProjectKey")) {
+    message("query_method is in c('EcologicalSiteID', 'PrimaryKey', 'ProjectKey'). Rendering keys UI element.")
+    # Use different placeholders for different key types!
+    if (input$query_method == "EcologicalSiteID") {
+      textInput(inputId = "keys",
+                label = "Search key values",
+                value = "",
+                placeholder = "R042XB012NM")
+    } else if (input$query_method == "PrimaryKey") {
+      textInput(inputId = "keys",
+                label = "Search key values",
+                value = "")
+    } else {
+      textInput(inputId = "keys",
+                label = "Search key values",
+                value = "")
+    }
+  })
+  
+  output$keys_input_info_ui <- renderUI(expr = if (req(input$query_method) %in% c("EcologicalSiteID", "PrimaryKey", "ProjectKey")) {
+    message("data_source is 'ldc'. Rendering keys_input_info UI element.")
+    actionButton(inputId = "keys_input_info",
+                 label = "",
+                 class = "info-btn",
+                 icon = icon("circle-question"))
+  })
+  
+  # Uploading spatial data
+  output$spatial_input_ui <- renderUI(expr = if (req(input$query_method) == "spatial" & req(input$data_source) == "ldc" & req(input$polygon_source) == "upload") {
+    message("query_method is 'spatial'. Rendering spatial_input UI element.")
+    fileInput(inputId = "polygons",
+              label = "Polygons ZIP file",
+              multiple = FALSE,
+              accept = ".zip")
+  })
+  output$spatial_input_info_ui <- renderUI(expr = if (req(input$query_method) == "spatial" & req(input$data_source) == "ldc" & req(input$polygon_source) == "upload") {
+    message("query_method is 'spatial'. Rendering spatial_input_info UI element.")
+    actionButton(inputId = "spatial_input_info",
+                 label = "",
+                 class = "info-btn",
+                 icon = icon("circle-question"))
+  })
+  # Only allow polygon selection if there's an uploaded polygon
+  output$select_polygon_ui <- renderUI(expr = if (!is.null(req(input$polygons)) & req(input$query_method) == "spatial" & req(input$data_source) == "ldc" & req(input$polygon_source) == "upload") {
+    message("There are polygons available to select from. Rendering polygons_layer UI element.")
+    selectInput(inputId = "polygons_layer",
+                label = "Polygons name",
+                choices = c(""),
+                selected = "")
+  })
+  output$select_polygon_info_ui <- renderUI(expr = if (!is.null(req(input$polygons)) & req(input$query_method) == "spatial" & req(input$data_source) == "ldc" & req(input$polygon_source) == "upload") {
+    message("There are polygons available to select from. Rendering polygons_layer UI element.")
+    actionButton(inputId = "select_polygons_info",
+                 label = "",
+                 class = "info-btn",
+                 icon = icon("circle-question"))
+  })
+  # Only allow repair if there's an uploaded polygon
+  output$repair_polygons_ui <- renderUI(expr = if (!is.null(req(input$polygons)) & req(input$query_method) == "spatial" & req(input$data_source) == "ldc" & req(input$polygon_source) == "upload") {
+    message("There are polygons selected. Rendering repair_polygons UI element")
+    checkboxInput(inputId = "repair_polygons",
+                  label = "Repair polygons",
+                  value = FALSE)
+  })
+  output$repair_polygons_info_ui <- renderUI(expr = if (!is.null(req(input$polygons)) & req(input$query_method) == "spatial" & req(input$data_source) == "ldc") {
+    message("There are polygons selected. Rendering repair_polygons_info UI element")
+    actionButton(inputId = "repair_polygons_info",
+                 label = "",
+                 class = "info-btn",
+                 icon = icon("circle-question"))
+  })
+  ###### Start Main Panel ######################################################
+  output$main_map_ui <- renderUI({
+    if (req(input$query_method) != "spatial" & (!is.null(workspace$mapping_header_sf) | !is.null(workspace$mapping_polygons))) {
+      message("Attempting to render main_map_ui")
+      leafletOutput(outputId = "main_map",
+                    height = "80vh")
+    }
+  })
+  output$drawing_map_ui <- renderUI({
+    if (req(input$query_method) == "spatial") {
+      message("Attempting to render drawing_map_ui")
+      leafletOutput(outputId = "drawing_map",
+                    height = "80vh")
+    }
+  })
+  
+  ###### Data Main Panel #######################################################
+  output$data_tab_notyet_ui <- renderUI({
+    # if (is.null(workspace$raw_data)) {
+    message("Rendering the no data warning")
+    fluidRow(column(width = 10,
+                    p(class = "next-step-prompt",
+                      "If there are no data visible, please return to the",
+                      a("Start tab",
+                        onclick = "tabJump('Start')"),
+                      "and make sure that you've either uploaded a CSV or queried the Landscape Data Commons.")))
+    # }
+  })
+  
+  ##### When the reset button is pressed #####
+  observeEvent(eventExpr = req(input$reset_button),
+               handlerExpr = {
+                 message("Reset button pressed!")
+                 shinyjs::refresh()
+                 message("Executed shinyjs::refresh()")
+               })
+  
+  observeEvent(eventExpr = req(input$clear_data),
+               handlerExpr = {
+                 message("Clear Data button pressed!")
+                 workspace$raw_data <- NULL
+                 output$data <- NULL
+                 output$benchmark_plot <- NULL
+                 output$benchmark_summary <- NULL
+                 output$timeseries_plot <- NULL
+                 output$timeseries_summary <- NULL
+               })
   
   #### When a CSV is uploaded, do this ####
   observeEvent(eventExpr = input$raw_data,
@@ -511,22 +819,26 @@ server <- function(input, output, session) {
                                     type = "error")
                  } else {
                    message("Attempting to unzip file")
-                   # Unzip with an OS-specific system call
-                   # Setting the working directory
-                   setwd(dirname(input$polygons$datapath))
-                   # Passing this to the OS
-                   system(sprintf("cd %s", dirname(input$polygons$datapath)))
-                   # Just checking for debugging
-                   message(getwd())
-                   # The unzipping argument to pass to the OS
-                   system(sprintf("unzip -u %s", input$polygons$datapath))
-                   # Set the working directory back
-                   setwd(workspace$original_directory)
-                   
+                   utils::unzip(zipfile = input$polygons$datapath,
+                                overwrite = TRUE,
+                                exdir = dirname(input$polygons$datapath))
                    message("File unzipped")
+                   # # Unzip with an OS-specific system call
+                   # # Setting the working directory
+                   # setwd(dirname(input$polygons$datapath))
+                   # # Passing this to the OS
+                   # system(sprintf("cd %s", dirname(input$polygons$datapath)))
+                   # # Just checking for debugging
+                   # message(getwd())
+                   # # The unzipping argument to pass to the OS
+                   # system(sprintf("unzip -u %s", input$polygons$datapath))
+                   # # Set the working directory back
+                   # setwd(workspace$original_directory)
+                   # message("File unzipped")
                    # Get the shapefile name
                    extracted_files <- list.files(dirname(input$polygons$datapath),
-                                                 full.names = TRUE)
+                                                 full.names = TRUE,
+                                                 recursive = TRUE)
                    
                    # Look for extracted shapefiles
                    shp_indices <- grepl(extracted_files,
@@ -638,7 +950,135 @@ server <- function(input, output, session) {
                  }
                })
   
-  #### Mapping freshly uploaded polygons ####
+  #### Map time ####
+  observeEvent(eventExpr = list(workspace$mapping_header_sf,
+                                workspace$mapping_polygons),
+               handlerExpr = {
+                 message("Something changed for mapping purposes.")
+                 # Initialize the map
+                 map <- leaflet::leaflet()
+                 
+                 # Add some basic info
+                 map <- leaflet::addTiles(map = map)
+                 
+                 # Add the polygons
+                 message("Checking to see if !is.null(workspace$mapping_polygons)")
+                 if (!is.null(workspace$mapping_polygons)) {
+                   message("!is.null(workspace$mapping_polygons) was TRUE")
+                   # Note that we have to manually remove Z dimensions with sf::st_zm()
+                   # otherwise if there's a Z dimension this fails with an
+                   # inscrutable error.
+                   map <- leaflet::addPolygons(map = map,
+                                               data = sf::st_transform(x = sf::st_zm(workspace$mapping_polygons),
+                                                                       crs = "+proj=longlat +datum=WGS84"),
+                                               fillColor = "coral",
+                                               stroke = FALSE,
+                                               fillOpacity = 0.5)
+                 }
+                 
+                 # Add in the retrieved points
+                 message("Checking to see if !is.null(workspace$mapping_header_sf)")
+                 if (!is.null(workspace$mapping_header_sf)) {
+                   message("!is.null(workspace$mapping_header_sf) was TRUE")
+                   map <- leaflet::addCircleMarkers(map = map,
+                                                    data = sf::st_transform(x = workspace$mapping_header_sf,
+                                                                            crs = "+proj=longlat +datum=WGS84"),
+                                                    stroke = TRUE,
+                                                    opacity = 0.9,
+                                                    color = "white",
+                                                    weight = 1,
+                                                    fillColor = "gray20",
+                                                    fillOpacity = 1,
+                                                    radius = 3,
+                                                    clusterOptions = leaflet::markerClusterOptions(showCoverageOnHover = TRUE,
+                                                                                                   zoomToBoundsOnClick = TRUE,
+                                                                                                   disableClusteringAtZoom = 8,
+                                                                                                   spiderfyOnMaxZoom = FALSE,
+                                                                                                   removeOutsideVisibleBounds = TRUE,
+                                                                                                   spiderLegPolylineOptions = list(weight = 1.5, color = "#222", opacity = 0.5),
+                                                                                                   freezeAtZoom = FALSE)
+                                                    )
+                 }
+                 
+                 if (is.null(workspace$mapping_polygons) & is.null(workspace$mapping_header_sf)) {
+                   # Set the framing
+                   map <- setView(map = map,
+                                  lng = -119,
+                                  lat = 38.7,
+                                  zoom = 4.25)
+                   map <- setMaxBounds(map = map,
+                                       lng1 = -125.5,
+                                       lat1 = 25,
+                                       lng2 = -66,
+                                       lat2 = 49.5)
+                 }
+                 
+                 # Add in the drawing controls
+                 map_drawing <- addDrawToolbar(map = map,
+                                               targetGroup = "draw",
+                                               position = 'topleft',
+                                               polylineOptions = FALSE,
+                                               circleOptions = FALSE,
+                                               markerOptions = FALSE,
+                                               circleMarkerOptions = FALSE,
+                                               singleFeature = TRUE)
+                 
+                 message("Rendering map")
+                 output$drawing_map <- leaflet::renderLeaflet(map_drawing)
+                 output$main_map <- leaflet::renderLeaflet(map)
+                 message("Map rendered")
+               })
+  
+  ###### Making a polygon sf object from the polygon drawn on the map ##########
+  # This is adapted from the RAP Production Explorer
+  # Character string of coordinates from drawn features on Leaflet map
+  observeEvent(input$drawing_map_draw_new_feature,{
+    message("There's a new polygon drawn on the map! Getting coordinates")
+    # This builds a neat little [x, y] string for each vertex
+    # Frankly, this is a little silly to do considering we're going to split them
+    # into a vector, but I can't be bothered to refactor beyond changing it to
+    # a sapply() because it works as-is and isn't hurting anyone
+    coords <- sapply(X = input$drawing_map_draw_new_feature$geometry$coordinates[1][[1]],
+                     FUN = function(X) {
+                       paste0("[", X[1], ", ", X[2], "]")
+                     })
+    coord_string <- paste0(coords,
+                           collapse = ", ")
+    workspace$drawn_coordinates <- coord_string
+    message("Coordinates saved to workspace$drawn_coordinates")
+  })
+  # Convert the coordinates of the vertices on the map into a polygon sf object!
+  observeEvent(eventExpr = workspace$drawn_coordinates,
+               handlerExpr = {
+                 if (!is.null(workspace$drawn_coordinates)) {
+                   coords <- workspace$drawn_coordinates
+                   message("workspace$drawn_coordinates has updated! Attempting to create a polygon sf object using the coordinates as vertices")
+                   print(coords)
+                   message("Cleaning coordinates and creating vector")
+                   coords_clean <- strsplit(x = gsub(x = coords,
+                                                     pattern = "\\[|\\]",
+                                                     replacement = ""),
+                                            split = ',') 
+                   print(coords_clean)
+                   message("Converting vector to numeric")
+                   coords_numeric <- as.numeric(coords_clean[[1]])
+                   print(coords_numeric)
+                   n_vertices <- length(coords_clean[[1]])/2
+                   message("Creating a matrix from the coordinates")
+                   coords_matrix <- matrix(coords_numeric, nrow = n_vertices, byrow = TRUE)
+                   coords_list <- list(coords_matrix)
+                   message("Making a polygon matrix thingy")
+                   print(coords_list)
+                   polygon <- sf::st_polygon(coords_list)
+                   message("Making an sf object")
+                   polygon <- st_sfc(polygon,
+                                     crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                   workspace$drawn_polygon_sf <- sf::st_sf(polygon)
+                   message("Polygon saved to workspace$drawn_polygon_sf")
+                 }
+               })
+  
+  #### Making freshly-uploaded polygons map-ready ####
   observeEvent(eventExpr = {input$polygons_layer},
                handlerExpr = {
                  message("input$polygons_layer has updated")
@@ -661,204 +1101,209 @@ server <- function(input, output, session) {
                                                                  dist = 0)
                    }
                  }
-                 # message("Jumping to map tab")
-                 # updateTabsetPanel(session = session,
-                 #                   inputId = "maintabs",
-                 #                   selected = "Map")
                })
   
   #### When someone fetches data from the Landscape Data Commons, do this ####
   observeEvent(eventExpr = input$fetch_data,
                handlerExpr = {
-                 showNotification(ui = "Downloading data from the LDC. Please wait.",
-                                  duration = NULL,
-                                  closeButton = FALSE,
-                                  id = "downloading",
-                                  type = "message")
-                 
                  # Set this variable so we can handle the data appropriately based on source
                  # Since there are from the LDC, we'll also be looking for header info
                  workspace$current_data_source <- "ldc"
                  message("Data source set to LDC")
                  
                  # Only do anything if there's at least one key
-                 if (input$search_type == "spatial") {
-                   if (input$polygons_layer == "") {
-                     showNotification(ui = "Please upload and select polygons.",
-                                      duration = NULL,
-                                      closeButton = TRUE,
-                                      type = "warning",
-                                      id = "no_polygons_yet_warning")
-                   } else {
-                     message("Attempting to query spatially")
-                     message("Reading in polygons")
-                     if (workspace$polygon_filetype == "gdb") {
-                       workspace$polygons <- sf::st_read(dsn = workspace$gdb_filepath,
-                                                         layer = input$polygons_layer)
-                     } else if (workspace$polygon_filetype == "shp") {
-                       workspace$polygons <- sf::st_read(dsn = input$polygons_layer)
-                     }
-                     message("Making sure the polygons are in NAD83")
-                     workspace$polygons <- sf::st_transform(workspace$polygons,
-                                                            crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
-                     
-                     # If they've asked us to "repair" polygons, buffer by 0
-                     if (input$repair_polygons) {
-                       message("Attempting to repair polygons by buffering by 0")
-                       workspace$polygons <- sf::st_buffer(x = workspace$polygons,
-                                                           dist = 0)
-                     }
-                     message(paste0("Number of individual polygons in workspace$polygons is ",
-                                    nrow(workspace$polygons)))
-                     message("Adding unique_id variable to workspace$polygons")
-                     workspace$polygons[["unique_id"]] <- 1:nrow(workspace$polygons)
-                     
-                     # For mapping purposes
-                     message("Updating workspace$mapping_polygons")
-                     workspace$mapping_polygons <- workspace$polygons
-                     
-                     if (is.null(workspace$headers)) {
-                       message("Retrieving headers")
-                       workspace$headers <- tryCatch(fetch_ldc(keys = NULL,
-                                                               key_type = NULL,
-                                                               data_type = "header",
-                                                               verbose = TRUE),
-                                                     error = function(error){
-                                                       gsub(x = error,
-                                                            pattern = "^Error.+[ ]:[ ]",
-                                                            replacement = "")
-                                                     })
-                       message(paste0("class(workspace$headers) is ",
-                                      paste(class(workspace$headers),
-                                            collapse = ", ")))
-                     }
-                     
-                     current_headers <- workspace$headers
-                     
-                     
-                     # If there was an API error, display that
-                     if ("character" %in% class(current_headers)) {
-                       results <- NULL
-                       showNotification(ui = paste0("API error retrieving headers for spatial query: ",
-                                                    current_headers),
+                 if (input$query_method == "spatial") {
+                   message("input$query_method is 'spatial'")
+                   message("Attempting to query spatially")
+                   if (input$polygon_source == "upload") {
+                     if (req(input$polygons_layer) == "") {
+                       message("Currently expecting uploaded polygons but there are none selected.")
+                       showNotification(ui = "Please upload and select polygons or drawn a polygon instead.",
                                         duration = NULL,
                                         closeButton = TRUE,
-                                        id = "headers_for_sf_error",
-                                        type = "error")
+                                        type = "warning",
+                                        id = "no_polygons_yet_warning")
                      } else {
-                       # If there was no error, proceed
-                       message("Converting header info to sf object")
-                       current_headers_sf <- sf::st_as_sf(x = current_headers,
-                                                          coords = c("Longitude_NAD83",
-                                                                     "Latitude_NAD83"),
+                       message("Reading in polygons")
+                       if (workspace$polygon_filetype == "gdb") {
+                         workspace$polygons <- sf::st_read(dsn = workspace$gdb_filepath,
+                                                           layer = input$polygons_layer)
+                       } else if (workspace$polygon_filetype == "shp") {
+                         workspace$polygons <- sf::st_read(dsn = input$polygons_layer)
+                       }
+                       
+                       # If they've asked us to "repair" polygons, buffer by 0
+                       if (input$repair_polygons) {
+                         message("Attempting to repair polygons by buffering by 0")
+                         message("Making sure the polygons are in NAD83 beforehand")
+                         workspace$polygons <- sf::st_transform(workspace$polygons,
+                                                                crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                         workspace$polygons <- sf::st_buffer(x = workspace$polygons,
+                                                             dist = 0)
+                         message("Polygons are buffered")
+                       }
+                     }
+                   } else {
+                     if (!is.null(req(workspace$drawn_polygon_sf))) {
+                       message("Using drawn polygon")
+                       workspace$polygons <- workspace$drawn_polygon_sf
+                     }
+                   }
+                   message("Making sure the polygons are in NAD83")
+                   workspace$polygons <- sf::st_transform(workspace$polygons,
                                                           crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                   
+                   message(paste0("Number of individual polygons in workspace$polygons is ",
+                                  nrow(workspace$polygons)))
+                   message("Adding unique_id variable to workspace$polygons")
+                   workspace$polygons[["unique_id"]] <- 1:nrow(workspace$polygons)
+                   
+                   # For mapping purposes
+                   message("Updating workspace$mapping_polygons")
+                   workspace$mapping_polygons <- workspace$polygons
+                   
+                   if (is.null(workspace$headers)) {
+                     message("Retrieving headers")
+                     workspace$headers <- tryCatch(fetch_ldc(keys = NULL,
+                                                             key_type = NULL,
+                                                             data_type = "header",
+                                                             verbose = TRUE),
+                                                   error = function(error){
+                                                     gsub(x = error,
+                                                          pattern = "^Error.+[ ]:[ ]",
+                                                          replacement = "")
+                                                   })
+                     message(paste0("class(workspace$headers) is ",
+                                    paste(class(workspace$headers),
+                                          collapse = ", ")))
+                   }
+                   
+                   current_headers <- workspace$headers
+                   
+                   
+                   # If there was an API error, display that
+                   if ("character" %in% class(current_headers)) {
+                     results <- NULL
+                     showNotification(ui = paste0("API error retrieving headers for spatial query: ",
+                                                  current_headers),
+                                      duration = NULL,
+                                      closeButton = TRUE,
+                                      id = "headers_for_sf_error",
+                                      type = "error")
+                   } else {
+                     # If there was no error, proceed
+                     message("Converting header info to sf object")
+                     current_headers_sf <- sf::st_as_sf(x = current_headers,
+                                                        coords = c("Longitude_NAD83",
+                                                                   "Latitude_NAD83"),
+                                                        crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs +type=crs")
+                     
+                     # This'll be useful so I can make a map, if that feature is added
+                     workspace$header_sf <- current_headers_sf
+                     workspace$mapping_header_sf <- current_headers_sf
+                     
+                     message("Performing sf_intersection()")
+                     points_polygons_intersection <- tryCatch(sf::st_intersection(x = current_headers_sf[, "PrimaryKey"],
+                                                                                  y = sf::st_transform(workspace$polygons[, "unique_id"],
+                                                                                                       crs = sf::st_crs(current_headers_sf))),
+                                                              error = function(error){"There was a geoprocessing error. Please try using the 'repair polygons' option."})
+                     
+                     if ("character" %in% class(points_polygons_intersection)) {
+                       showNotification(ui = points_polygons_intersection,
+                                        duration = NULL,
+                                        closeButton = TRUE,
+                                        type = "error",
+                                        id = "intersection_error")
+                     } else {
+                       current_primary_keys <- unique(points_polygons_intersection$PrimaryKey)
                        
-                       # This'll be useful so I can make a map, if that feature is added
-                       workspace$header_sf <- current_headers_sf
-                       workspace$mapping_header_sf <- current_headers_sf
-                       
-                       message("Performing sf_intersection()")
-                       points_polygons_intersection <- tryCatch(sf::st_intersection(x = current_headers_sf[, "PrimaryKey"],
-                                                                                    y = sf::st_transform(workspace$polygons[, "unique_id"],
-                                                                                                         crs = sf::st_crs(current_headers_sf))),
-                                                                error = function(error){"There was a geoprocessing error. Please try using the 'repair polygons' option."})
-                       
-                       if ("character" %in% class(points_polygons_intersection)) {
-                         showNotification(ui = points_polygons_intersection,
+                       if (length(current_primary_keys) < 1) {
+                         message("No data were found")
+                         showNotification(ui = paste0("No data were found within your polygons."),
                                           duration = NULL,
                                           closeButton = TRUE,
-                                          type = "error",
-                                          id = "intersection_error")
+                                          id = "no_overlap",
+                                          type = "warning")
+                         results <- NULL
                        } else {
-                         current_primary_keys <- unique(points_polygons_intersection$PrimaryKey)
+                         message(paste0(length(current_primary_keys), " primary keys found. Querying now."))
                          
-                         if (length(current_primary_keys) < 1) {
-                           message("No data were found")
-                           showNotification(ui = paste0("No data were found within your polygons."),
-                                            duration = NULL,
-                                            closeButton = TRUE,
-                                            id = "no_overlap",
-                                            type = "warning")
-                           results <- NULL
-                         } else {
-                           message(paste0(length(current_primary_keys), " primary keys found. Querying now."))
-                           
-                           message("Retrieving data using PrimaryKey values from spatial intersection")
-                           results <- tryCatch(fetch_ldc(keys = current_primary_keys,
-                                                         key_type = "PrimaryKey",
-                                                         data_type = "indicators",
-                                                         key_chunk_size = 100,
-                                                         verbose = TRUE),
-                                               error = function(error){
-                                                 gsub(x = error,
-                                                      pattern = "^Error.+[ ]:[ ]",
-                                                      replacement = "")
-                                               })
-                           message("Querying by primary key complete.")
-                           message(paste0("Number of records retrieved: ",
-                                          length(results)))
-                         }
+                         message("Retrieving data using PrimaryKey values from spatial intersection")
+                         results <- tryCatch(fetch_ldc(keys = current_primary_keys,
+                                                       key_type = "PrimaryKey",
+                                                       data_type = "indicators",
+                                                       key_chunk_size = 100,
+                                                       verbose = TRUE),
+                                             error = function(error){
+                                               gsub(x = error,
+                                                    pattern = "^Error.+[ ]:[ ]",
+                                                    replacement = "")
+                                             })
+                         message("Querying by primary key complete.")
+                         message(paste0("Number of records retrieved: ",
+                                        length(results)))
+                       }
+                       
+                       # Only keep going if there are results!!!!
+                       if (length(results) > 0 & "data.frame" %in% class(results)) {
+                         message("Making workspace$mapping_header_sf")
+                         workspace$mapping_header_sf <- current_headers_sf[current_headers_sf$PrimaryKey %in% results$PrimaryKey,]
                          
-                         # Only keep going if there are results!!!!
-                         if (length(results) > 0 & "data.frame" %in% class(results)) {
-                           message("Making workspace$mapping_header_sf")
-                           workspace$mapping_header_sf <- current_headers_sf[current_headers_sf$PrimaryKey %in% results$PrimaryKey,]
-                           
-                           message("Coercing variables to numeric.")
-                           # Convert from character to numeric variables where possible
-                           data_corrected <- lapply(X = names(results),
-                                                    data = results,
-                                                    FUN = function(X, data){
-                                                      # Get the current variable values as a vector
-                                                      vector <- data[[X]]
-                                                      # Try to coerce into numeric
-                                                      numeric_vector <- as.numeric(vector)
-                                                      # If that works without introducing NAs, return the numeric vector
-                                                      # Otherwise, return the original character vector
-                                                      if (all(!is.na(numeric_vector))) {
-                                                        return(numeric_vector)
-                                                      } else {
-                                                        return(vector)
-                                                      }
-                                                    })
-                           
-                           # From some reason co.call(cbind, data_corrected) was returning a list not a data frame
-                           # so I'm resorting to using dplyr
-                           data <- dplyr::bind_cols(data_corrected)
-                           # Correct the names of the variables
-                           names(data) <- names(results)
-                           
-                           # Put it in the workspace list
-                           message("Setting data_fresh to TRUE because we just downloaded it")
-                           workspace$data_fresh <- TRUE
-                           workspace$raw_data <- data
-                         } else if (length(results) == 0) {
-                           message("No records found for those PrimaryKeys")
-                           if (length(current_primary_keys) > 0) {
-                             no_data_spatial_error_message <- paste0("Although sampling locations were found within your polygons, they did not have associated data of the type requested.")
-                           } else {
-                             no_data_spatial_error_message <- paste0("No sampling locations were found within your polygons.")
-                           }
-                           showNotification(ui = paste0(no_data_spatial_error_message,
-                                                        results),
-                                            duration = NULL,
-                                            closeButton = TRUE,
-                                            id = "no_data_spatial_error",
-                                            type = "error")
-                           workspace$raw_data <- NULL
+                         message("Coercing variables to numeric.")
+                         # Convert from character to numeric variables where possible
+                         data_corrected <- lapply(X = names(results),
+                                                  data = results,
+                                                  FUN = function(X, data){
+                                                    # Get the current variable values as a vector
+                                                    vector <- data[[X]]
+                                                    # Try to coerce into numeric
+                                                    numeric_vector <- as.numeric(vector)
+                                                    # If that works without introducing NAs, return the numeric vector
+                                                    # Otherwise, return the original character vector
+                                                    if (all(!is.na(numeric_vector))) {
+                                                      return(numeric_vector)
+                                                    } else {
+                                                      return(vector)
+                                                    }
+                                                  })
+                         
+                         # From some reason co.call(cbind, data_corrected) was returning a list not a data frame
+                         # so I'm resorting to using dplyr
+                         data <- dplyr::bind_cols(data_corrected)
+                         # Correct the names of the variables
+                         names(data) <- names(results)
+                         
+                         # Put it in the workspace list
+                         message("Setting data_fresh to TRUE because we just downloaded it")
+                         workspace$data_fresh <- TRUE
+                         workspace$raw_data <- data
+                       } else if (length(results) == 0) {
+                         message("No records found for those PrimaryKeys")
+                         if (length(current_primary_keys) > 0) {
+                           no_data_spatial_error_message <- paste0("Although sampling locations were found within your polygons, they did not have associated data of the type requested.")
                          } else {
-                           showNotification(ui = paste0("API error retrieving data based on spatial query: ",
-                                                        results),
-                                            duration = NULL,
-                                            closeButton = TRUE,
-                                            id = "primarykey_spatial_error",
-                                            type = "error")
-                           workspace$raw_data <- NULL
+                           no_data_spatial_error_message <- paste0("No sampling locations were found within your polygons.")
                          }
+                         showNotification(ui = paste0(no_data_spatial_error_message,
+                                                      results),
+                                          duration = NULL,
+                                          closeButton = TRUE,
+                                          id = "no_data_spatial_error",
+                                          type = "error")
+                         workspace$raw_data <- NULL
+                       } else {
+                         showNotification(ui = paste0("API error retrieving data based on spatial query: ",
+                                                      results),
+                                          duration = NULL,
+                                          closeButton = TRUE,
+                                          id = "primarykey_spatial_error",
+                                          type = "error")
+                         workspace$raw_data <- NULL
                        }
                      }
                    }
-                 } else if (input$keys != "") {
+                 } else if (req(input$keys) != "") {
+                   message("Querying by keys")
                    # Handle multiple requested ecosites at once!
                    current_key_vector <- stringr::str_split(string = input$keys,
                                                             pattern = ",",
@@ -876,12 +1321,12 @@ server <- function(input, output, session) {
                    
                    # The API queryable tables don't include ecosite, so we grab
                    # the header table and get primary keys from that
-                   if (input$search_type == "EcologicalSiteID") {
+                   if (input$query_method == "EcologicalSiteID") {
                      workspace$mapping_polygons <- NULL
-                     message("search_type is EcologicalSiteID")
+                     message("query_method is EcologicalSiteID")
                      message("Retrieving headers")
                      current_headers <- tryCatch(fetch_ldc(keys = current_key_string,
-                                                           key_type = input$search_type,
+                                                           key_type = input$query_method,
                                                            data_type = "header",
                                                            verbose = TRUE),
                                                  error = function(error){
@@ -937,9 +1382,9 @@ server <- function(input, output, session) {
                                                   replacement = "")
                                            })
                      }
-                   } else if (input$search_type != "spatial") {
+                   } else if (input$query_method != "spatial") {
                      workspace$mapping_polygons <- NULL
-                     message("search_type is not EcologicalSiteID or spatial")
+                     message("query_method is not EcologicalSiteID or spatial")
                      message("Retrieving data using provided keys")
                      current_key_chunk_count <- ceiling(length(current_key_vector) / 100)
                      
@@ -956,7 +1401,7 @@ server <- function(input, output, session) {
                                                    })
                      
                      results <- tryCatch(fetch_ldc(keys = current_keys_chunks,
-                                                   key_type = input$search_type,
+                                                   key_type = input$query_method,
                                                    data_type = "indicators",
                                                    verbose = TRUE),
                                          error = function(error){
@@ -987,14 +1432,14 @@ server <- function(input, output, session) {
                    } else {
                      message("There are results!")
                      message("Determining if keys are missing.")
-                     message(paste0("input$search_type is: ",
-                                    paste(input$search_type,
+                     message(paste0("input$query_method is: ",
+                                    paste(input$query_method,
                                           collapse = ", ")))
                      # Because ecosites were two-stage, we check in with headers
-                     if (input$search_type %in% c("EcologicalSiteID")) {
-                       workspace$queried_keys <- unique(current_headers[[input$search_type]])
-                     } else if (input$search_type != "spatial") {
-                       workspace$queried_keys <- unique(results[[input$search_type]])
+                     if (input$query_method %in% c("EcologicalSiteID")) {
+                       workspace$queried_keys <- unique(current_headers[[input$query_method]])
+                     } else if (input$query_method != "spatial") {
+                       workspace$queried_keys <- unique(results[[input$query_method]])
                      }
                      
                      workspace$missing_keys <- current_key_vector[!(current_key_vector %in% workspace$queried_keys)]
@@ -1088,7 +1533,6 @@ server <- function(input, output, session) {
                                     id = "no_keys_warning",
                                     type = "warning")
                  }
-                 removeNotification(id = "downloading")
                })
   
   #### Raw data are updated, do this ####
@@ -1121,12 +1565,14 @@ server <- function(input, output, session) {
                                      inputId = "date_variable",
                                      choices = c("", variable_names))
                    
-                   output$data_table <- renderDataTable(workspace$raw_data)
-                   # output$data_table <- renderTable(workspace$raw_data)
-                   
-                   updateTabsetPanel(session = session,
-                                     inputId = "maintabs",
-                                     selected = "Data")
+                   message("Rendering data table")
+                   output$data_table <- DT::renderDT(workspace$raw_data,
+                                                     rownames = FALSE,
+                                                     options = list(pageLength = 10,
+                                                                    fixedHeader = TRUE,
+                                                                    scrollX = TRUE), 
+                                                     extensions = "FixedHeader")
+                   message("Data table rendered")
                  }
                })
   
@@ -1251,12 +1697,6 @@ server <- function(input, output, session) {
   #### When the plot button is hit, do this ####
   observeEvent(eventExpr = input$plot_button,
                handlerExpr = {
-                 showNotification(ui = "Drawing plots. Please wait.",
-                                  duration = NULL,
-                                  closeButton = FALSE,
-                                  type = "message",
-                                  id = "plotting")
-                 
                  # Clean out the temp directory just to be safe
                  current_files_in_temp_dir <- list.files(path = workspace$temp_directory,
                                                          full.names = TRUE)
@@ -1898,21 +2338,22 @@ server <- function(input, output, session) {
                    message("Preparing to zip up the following files:")
                    message(paste0(files_to_zip,
                                   collapse = ", "))
+                   zip::zip(zipfile = "plots.zip",
+                            files = files_to_zip)
                    
-                   
-                   switch(Sys.info()[["sysname"]],
-                          Windows = {
-                            message("This is a Windows system. Using 7zip.")
-                            system(paste0("cmd.exe /c \"C:\\Program Files\\7-Zip\\7z\".exe a -tzip plots.zip ",
-                                          paste(files_to_zip,
-                                                collapse = " ")))
-                          },
-                          Linux = {
-                            message("This is a Unix system. Using zip.")
-                            system(paste("zip -D plots %s",
-                                         paste(files_to_zip,
-                                               collapse = " ")))
-                          })
+                   # switch(Sys.info()[["sysname"]],
+                   #        Windows = {
+                   #          message("This is a Windows system. Using 7zip.")
+                   #          system(paste0("cmd.exe /c \"C:\\Program Files\\7-Zip\\7z\".exe a -tzip plots.zip ",
+                   #                        paste(files_to_zip,
+                   #                              collapse = " ")))
+                   #        },
+                   #        Linux = {
+                   #          message("This is a Unix system. Using zip.")
+                   #          system(paste("zip -D plots %s",
+                   #                       paste(files_to_zip,
+                   #                             collapse = " ")))
+                   #        })
                    if (!any(grepl(x = list.files(workspace$temp_directory), pattern = "^plots\\.(zip)|(ZIP)"))) {
                      stop("No valid .zip file called 'plots' exists in the directory.")
                    } else {
@@ -1920,8 +2361,6 @@ server <- function(input, output, session) {
                    }
                    setwd(workspace$original_directory)
                  }
-                 
-                 removeNotification(id = "plotting")
                })
   
   ##### Download handler for the .zip file created with plots ####
@@ -1975,7 +2414,15 @@ server <- function(input, output, session) {
                                                     weight = 1,
                                                     fillColor = "gray20",
                                                     fillOpacity = 1,
-                                                    radius = 3)
+                                                    radius = 3,
+                                                    clusterOptions = leaflet::markerClusterOptions(showCoverageOnHover = TRUE,
+                                                                                                   zoomToBoundsOnClick = TRUE,
+                                                                                                   disableClusteringAtZoom = 8,
+                                                                                                   spiderfyOnMaxZoom = FALSE,
+                                                                                                   removeOutsideVisibleBounds = TRUE,
+                                                                                                   spiderLegPolylineOptions = list(weight = 1.5, color = "#222", opacity = 0.5),
+                                                                                                   freezeAtZoom = FALSE)
+                                                    )
                  }
                  
                  message("Rendering map")
