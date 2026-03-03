@@ -85,7 +85,7 @@ ui <- fluidPage(
                         sidebarPanel(
                           HTML("<div class = 'app-info'>
                                 <h3>About</h3>
-                                This application visualizes the distribution of values for ecological indicators to help determine value ranges for categorical benchmarks or to see the consequences of applying categorical benchmarks.
+                                This application visualizes the distribution of values for indicators to help determine value ranges for categorical benchmarks or to see the consequences of applying categorical benchmarks.
                                 <br>
                                 </div>"
                           ),
